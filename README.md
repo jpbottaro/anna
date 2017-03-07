@@ -10,8 +10,8 @@ A series of experiments using neural nets with tensorflow.
 
 Install dependencies with:
 
-\# make init
+make init
 
 Run tests with:
 
-\# make test
+make test
