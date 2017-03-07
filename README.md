@@ -1,14 +1,17 @@
-# Anna
+# Anna <img src="https://travis-ci.org/jpbottaro/anna.svg?branch=master" alt="Travis CI">
 
 Anna - A Neural Network Analysis
 
 ## Description
 
-A series of experiments using NNs. All code uses TensorFlow, to install simply:
+A series of experiments using neural nets with tensorflow.
 
-pip install tensorflow
+## How to run
 
-## Directory Structure
+Install dependencies with:
 
-- datasets: scripts to fetch most datasets needed for experiments
-- models: code for each model used to experiment
+\# make init
+
+Run tests with:
+
+\# make test
