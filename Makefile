@@ -1,7 +1,7 @@
 venv: venv/bin/activate
 
 venv/bin/activate:
-	@test -d venv || python3 -m venv --clear --upgrade venv
+	@test -d venv || python3 -m venv --clear venv
 	venv/bin/pip install -Ur requirements.txt
 	@touch venv/bin/activate
 
