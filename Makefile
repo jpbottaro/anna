@@ -1,7 +1,17 @@
-init:
-	pip install -r requirements.txt
+venv: venv/bin/activate
 
-test:
-	python setup.py test
+venv/bin/activate:
+	@test -d venv || python3 -m venv venv
+	venv/bin/pip install -Ur requirements.txt
+	@touch venv/bin/activate
 
-.PHONY: init test
+datasets: venv
+	venv/bin/python anna/datasets/main.py
+
+test: venv
+	venv/bin/python setup.py test
+
+clean:
+	rm -rf venv
+
+.PHONY: venv datasets test clean
