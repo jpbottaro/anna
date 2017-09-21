@@ -32,7 +32,7 @@ def fetch(folder="data/wmt14"):
     """
 
     utils.create_folder(folder)
-    for f, url in CORPORA.iteritems():
+    for f, url in CORPORA.items():
         utils.urlretrieve(url, folder + "/" + f)
 
 if __name__ == "__main__":
