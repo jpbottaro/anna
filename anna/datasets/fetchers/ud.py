@@ -2,7 +2,10 @@
 
 Visit: http://universaldependencies.org"""
 
+import os
 from . import utils
+
+FOLDER_NAME = "universal-dependencies"
 
 UD_URL = "https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11234/"
 
@@ -15,7 +18,7 @@ UD_LINKS = {
 }
 
 
-def fetch(folder="data/universal-dependencies", versions=None):
+def fetch(folder, versions=None):
     """
     Fetches and extracts the requested versions of the universal
     dependencies, and saves them in the given 'folder'.
@@ -25,13 +28,14 @@ def fetch(folder="data/universal-dependencies", versions=None):
     if versions is None:
         versions = ["1.4"]
 
-    utils.create_folder(folder)
+    target_folder = os.path.join(folder, FOLDER_NAME)
+    utils.create_folder(target_folder)
     paths = []
     for ver in versions:
         if ver not in UD_LINKS:
             print("Version not supported: " + ver)
         url = UD_LINKS[ver]
-        path = folder + "/ud-" + ver + ".tgz"
+        path = os.path.join(target_folder, "ud-" + ver + ".tgz")
         paths.append((ver, path))
         utils.urlretrieve(url, path)
     return paths

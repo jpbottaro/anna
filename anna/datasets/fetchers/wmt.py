@@ -2,7 +2,10 @@
 
 Visit: http://www.statmt.org/wmt14/translation-task.html"""
 
+import os
 from . import utils
+
+FOLDER_NAME = "wmt14"
 
 CORPORA = {
     "europarl-parallel.tgz":
@@ -24,16 +27,17 @@ CORPORA = {
 }
 
 
-def fetch(folder="data/wmt14"):
+def fetch(folder):
     """
     Fetches most data from the WMT14 shared task .
 
     Creates the folder if it doesn't exist.
     """
 
-    utils.create_folder(folder)
+    target_folder = os.path.join(folder, FOLDER_NAME)
+    utils.create_folder(target_folder)
     for f, url in CORPORA.items():
-        utils.urlretrieve(url, folder + "/" + f)
+        utils.urlretrieve(url, os.path.join(target_folder, f))
 
 if __name__ == "__main__":
     fetch()
