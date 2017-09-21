@@ -8,10 +8,14 @@ A series of experiments using neural nets with tensorflow.
 
 ## How to run
 
-Install dependencies with:
+Fetch datasets with:
 
-make init
+```bash
+make datasets
+```
 
 Run tests with:
 
+```bash
 make test
+```
