@@ -3,12 +3,12 @@
 from __future__ import division
 import os
 import sys
-import urllib
+import urllib.request
 
 
 def reporthook(blocknum, blocksize, totalsize):
     """
-    A hook that conforms with 'urllib.urlretrieve()' interface.
+    A hook that conforms with 'urllib.request.urlretrieve()' interface.
 
     It reports in stdout the current progress of the download, including
     a progress bar.
@@ -42,7 +42,7 @@ def urlretrieve(url, path):
         print("Skipping: " + url)
     else:
         print("Downloading: " + url)
-        urllib.urlretrieve(url, path, reporthook)
+        urllib.request.urlretrieve(url, path, reporthook)
 
 
 def create_folder(folder):

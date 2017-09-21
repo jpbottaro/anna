@@ -1,15 +1,16 @@
 """Displays a simple menu to download datasets."""
 
-import utils.ud
-import utils.conll03
-import utils.wmt
-import utils.wiki
+import os
+import fetchers.ud
+import fetchers.conll03
+import fetchers.wmt
+import fetchers.wiki
 
 DATASETS = [
-    ("Universal Dependencies (Morph, POS Tags)", utils.ud.fetch),
-    ("CoNLL03 (NER)", utils.conll03.fetch),
-    ("WMT14 (MT)", utils.wmt.fetch),
-    ("Wiki", utils.wiki.fetch)
+    ("Universal Dependencies (Morph, POS Tags)", fetchers.ud.fetch),
+    ("CoNLL03 (NER)", fetchers.conll03.fetch),
+    ("WMT14 (MT)", fetchers.wmt.fetch),
+    ("Wiki", fetchers.wiki.fetch)
 ]
 
 if __name__ == "__main__":
@@ -17,4 +18,8 @@ if __name__ == "__main__":
     for i, t in enumerate(DATASETS):
         print("[{}]: {}".format(i, t[0]))
     num = input("\nSelect number: ")
-    DATASETS[int(num)][1]()
+    if num:
+        print()
+        datasets_folder = os.path.dirname(os.path.realpath(__file__))
+        datasets_folder = os.path.join(datasets_folder, "data")
+        DATASETS[int(num)][1](datasets_folder)

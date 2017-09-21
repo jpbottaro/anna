@@ -1,7 +1,7 @@
 """Fetches mediawiki dumps."""
 
 from __future__ import division
-import utils
+from . import utils
 
 # An example url for "es" is: https://dumps.wikimedia.org/eswiki/20160501/
 #                             eswiki-20160501-pages-articles-multistream.xml.bz2

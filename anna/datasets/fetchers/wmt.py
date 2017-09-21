@@ -2,7 +2,7 @@
 
 Visit: http://www.statmt.org/wmt14/translation-task.html"""
 
-import utils
+from . import utils
 
 CORPORA = {
     "europarl-parallel.tgz":

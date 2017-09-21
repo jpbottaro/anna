@@ -2,7 +2,7 @@
 
 Visit: http://universaldependencies.org"""
 
-import utils
+from . import utils
 
 UD_URL = "https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11234/"
 

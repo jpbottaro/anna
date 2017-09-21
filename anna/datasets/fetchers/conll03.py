@@ -3,29 +3,30 @@
 Visit: http://www.clips.uantwerpen.be/conll2003/ner"""
 
 import os
-import utils
 import tarfile
 import shutil
 import subprocess
+from . import utils
 
-DATA_FOLDER = "data/conll03/"
+FOLDER_NAME = "conll03"
 
 CONLL_FOLDER = "ner"
 CONLL_FILE = CONLL_FOLDER + ".tgz"
 CONLL_URL = "http://www.clips.uantwerpen.be/conll2003/" + CONLL_FILE
 CONLL_SCRIPT = "bin/make.eng.2016"
+CONLL_TRAIN_FILE = "eng.train"
 
-REUTERS_PATH = "data/reuters/rcv1.tar.xz"
+REUTERS_PATH = "reuters/rcv1.tar.xz"
 REUTERS_TEXT = """To download the Reuters corpus, follow the instructions at:
 
     http://trec.nist.gov/data/reuters/reuters.html
 
 Once you have the RC1 file, put it at:
 
-    """ + REUTERS_PATH
+    anna/datasets/data/""" + REUTERS_PATH
 
 
-def fetch(folder=DATA_FOLDER):
+def fetch(folder):
     """
     Fetches and extracts the CoNLL03 dataset. If the Reuters dataset is
     not available, it prints instructions on how to get it.
@@ -33,24 +34,32 @@ def fetch(folder=DATA_FOLDER):
     Creates the folder if it doesn't exist.
     """
 
-    # We need Reuters to produce CoNLL03
-    if not os.path.exists(REUTERS_PATH):
-        print(REUTERS_TEXT)
-        exit(1)
+    target_folder = os.path.join(folder, FOLDER_NAME)
+    extracted_folder = os.path.join(target_folder, CONLL_FOLDER)
+    conll_file = os.path.join(target_folder, CONLL_FILE)
+    conll_train = os.path.join(extracted_folder, CONLL_TRAIN_FILE)
 
-    utils.create_folder(folder)
-    utils.urlretrieve(CONLL_URL, folder + CONLL_FILE)
+    if os.path.exists(conll_train):
+        return
+
+    # We need Reuters to produce CoNLL03
+    reuters_path = os.path.join(folder, REUTERS_PATH)
+    if not os.path.exists(reuters_path):
+        print(REUTERS_TEXT)
+        exit(0)
 
     # Extract annotations if not previously done
-    if not os.path.exists(folder + CONLL_FOLDER):
-        with tarfile.open(folder + CONLL_FILE, "r:gz") as conll:
-            conll.extractall(folder)
+    if not os.path.exists(extracted_folder):
+        utils.create_folder(target_folder)
+        utils.urlretrieve(CONLL_URL, conll_file)
+        with tarfile.open(conll_file, "r:gz") as conll:
+            conll.extractall(target_folder)
 
     # Put Reuters data where CoNLL03 script expects it
-    shutil.copy(REUTERS_PATH, folder + CONLL_FOLDER)
+    shutil.copy(reuters_path, extracted_folder)
 
     # Run CoNLL script
-    os.chdir(folder + CONLL_FOLDER)
+    os.chdir(extracted_folder)
     subprocess.call(CONLL_SCRIPT, shell=True)
 
 
