@@ -2,7 +2,7 @@
 
 import os
 import pickle
-import dataset.reader.reuters21578 as reuters
+import dataset.reuters21578 as reuters
 
 REUTERS_PATH = "dataset/data/reuters21578"
 
@@ -11,6 +11,7 @@ TEST_PICKLE = "test.pickle"
 
 
 if __name__ == "__main__":
+    """
     curr_path = os.path.dirname(os.path.realpath(__file__))
     path = os.path.join(curr_path, REUTERS_PATH)
     train_path = os.path.join(path, TRAIN_PICKLE)
@@ -28,7 +29,9 @@ if __name__ == "__main__":
             train_docs = pickle.load(f)
         with open(test_path, "rb") as f:
             test_docs = pickle.load(f)
+    """
 
+    train_docs, test_docs = reuters.get()
     doc = test_docs[0]
     print("Text: " + doc.text[:100])
     print("Labels: " + str(doc.labels))

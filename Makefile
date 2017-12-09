@@ -6,13 +6,13 @@ venv: .venv/bin/activate
 	@touch .venv/bin/activate
 
 datasets: venv
-	@.venv/bin/python anna/dataset/main.py
+	@.venv/bin/python anna/datasets.py data
 
 test: venv
 	@.venv/bin/python setup.py test
 
 run: venv
-	@.venv/bin/python anna/main.py
+	@.venv/bin/python anna/main.py data
 
 clean:
 	rm -rf .venv

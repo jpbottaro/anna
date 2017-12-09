@@ -3,7 +3,7 @@
 Visit: http://universaldependencies.org"""
 
 import os
-from . import utils
+import dataset.utils as utils
 
 UD_URL = "https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11234/"
 
@@ -16,23 +16,35 @@ UD_LINKS = {
 }
 
 
-def fetch(folder, versions=None):
+def fetch(data_dir, dest="universal-dependencies", versions=None):
     """
     Fetches and extracts the requested versions of the universal
     dependencies, and saves them in the given 'folder'.
 
-    Creates the folder if it doesn't exist.
+    Creates the `dest` if it doesn't exist.
+
+    Args:
+        data_dir (str): absolute path to the folder where datasets are stored
+        dest (str): name for dir where UD will be extracted
+        versions (list[str]): list of UD versions to fetch
+
+    Returns:
+        final_dir (str): absolute path where UD was extracted
     """
+
+    # Create folder
+    ud_dir = os.path.join(data_dir, dest)
+    utils.create_folder(ud_dir)
+
     if versions is None:
         versions = ["1.4"]
 
-    utils.create_folder(folder)
-    paths = []
     for ver in versions:
         if ver not in UD_LINKS:
             print("Version not supported: " + ver)
         url = UD_LINKS[ver]
-        path = os.path.join(folder, "ud-" + ver + ".tgz")
-        paths.append((ver, path))
-        utils.urlretrieve(url, path)
-    return paths
+        path = os.path.join(ud_dir, "ud-" + ver + ".tgz")
+        if not os.path.exists(path):
+            utils.urlretrieve(url, path)
+
+    return ud_dir
