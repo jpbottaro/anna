@@ -9,8 +9,6 @@ import subprocess
 from . import utils
 from . import conll03
 
-FOLDER_NAME = "aida"
-
 AIDA_FOLDER = "aida-yago2-dataset"
 AIDA_FILE = AIDA_FOLDER + ".zip"
 AIDA_URL = \
@@ -29,9 +27,8 @@ def fetch(folder):
     Creates the folder if it doesn't exist.
     """
 
-    target_folder = os.path.join(folder, FOLDER_NAME)
-    extracted_folder = os.path.join(target_folder, AIDA_FOLDER)
-    aida_file = os.path.join(target_folder, AIDA_FILE)
+    extracted_folder = os.path.join(folder, AIDA_FOLDER)
+    aida_file = os.path.join(folder, AIDA_FILE)
     aida_final_file = os.path.join(extracted_folder, AIDA_FINAL_FILE)
 
     if os.path.exists(aida_final_file):
@@ -44,15 +41,11 @@ def fetch(folder):
 
     # Extract annotations if not previously done
     if not os.path.exists(extracted_folder):
-        utils.create_folder(target_folder)
+        utils.create_folder(folder)
         utils.urlretrieve(AIDA_URL, aida_file)
         with zipfile.ZipFile(aida_file, "r") as aida:
-            aida.extractall(target_folder)
+            aida.extractall(folder)
 
     # Run CoNLL script
     os.chdir(extracted_folder)
     subprocess.call(AIDA_SCRIPT.format(conll_path), shell=True)
-
-
-if __name__ == "__main__":
-    fetch()

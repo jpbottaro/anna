@@ -5,8 +5,6 @@ Visit: http://www.statmt.org/wmt14/translation-task.html"""
 import os
 from . import utils
 
-FOLDER_NAME = "wmt14"
-
 CORPORA = {
     "europarl-parallel.tgz":
     "http://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz",
@@ -34,10 +32,6 @@ def fetch(folder):
     Creates the folder if it doesn't exist.
     """
 
-    target_folder = os.path.join(folder, FOLDER_NAME)
-    utils.create_folder(target_folder)
+    utils.create_folder(folder)
     for f, url in CORPORA.items():
-        utils.urlretrieve(url, os.path.join(target_folder, f))
-
-if __name__ == "__main__":
-    fetch()
+        utils.urlretrieve(url, os.path.join(folder, f))

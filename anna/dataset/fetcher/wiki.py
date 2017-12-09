@@ -5,8 +5,6 @@ from __future__ import division
 import os
 from . import utils
 
-FOLDER_NAME = "wiki"
-
 # An example url for "es" is: https://dumps.wikimedia.org/eswiki/20160501/
 #                             eswiki-20160501-pages-articles.xml.bz2
 WIKIMEDIA_HOST = "https://dumps.wikimedia.org"
@@ -26,16 +24,11 @@ def fetch(folder, langs=None, date="latest"):
     if langs is None:
         langs = ['en']
 
-    target_folder = os.path.join(folder, FOLDER_NAME)
-    utils.create_folder(target_folder)
+    utils.create_folder(folder)
     paths = []
     for lang in langs:
         url = URL_FORMAT.format(lang=lang, date=date)
-        path = os.path.join(target_folder,
-                            FILE_NAME.format(lang=lang, date=date))
+        path = os.path.join(folder, FILE_NAME.format(lang=lang, date=date))
         paths.append((lang, path))
         utils.urlretrieve(url, path)
     return paths
-
-if __name__ == "__main__":
-    fetch()

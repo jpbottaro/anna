@@ -7,8 +7,8 @@ import os
 import tarfile
 from . import utils
 
-FOLDER = "reuters21578"
-FILE = FOLDER + ".tar.gz"
+NAME = "reuters21578"
+FILE = NAME + ".tar.gz"
 URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/" \
     + "reuters21578-mld/" + FILE
 
@@ -20,12 +20,11 @@ def fetch(folder):
     Creates the folder if it doesn't exist.
     """
 
-    target_folder = os.path.join(folder, FOLDER)
-    reuters_file = os.path.join(target_folder, FILE)
+    reuters_file = os.path.join(folder, FILE)
 
     # Extract annotations if not previously done
-    if not os.path.exists(target_folder):
-        utils.create_folder(target_folder)
+    if not os.path.exists(reuters_file):
+        utils.create_folder(folder)
         utils.urlretrieve(URL, reuters_file)
         with tarfile.open(reuters_file, "r:gz") as reuters:
-            reuters.extractall(target_folder)
+            reuters.extractall(folder)

@@ -8,8 +8,6 @@ import shutil
 import subprocess
 from . import utils
 
-FOLDER_NAME = "conll03"
-
 CONLL_FOLDER = "ner"
 CONLL_FILE = CONLL_FOLDER + ".tgz"
 CONLL_URL = "http://www.clips.uantwerpen.be/conll2003/" + CONLL_FILE
@@ -34,9 +32,8 @@ def fetch(folder):
     Creates the folder if it doesn't exist.
     """
 
-    target_folder = os.path.join(folder, FOLDER_NAME)
-    extracted_folder = os.path.join(target_folder, CONLL_FOLDER)
-    conll_file = os.path.join(target_folder, CONLL_FILE)
+    extracted_folder = os.path.join(folder, CONLL_FOLDER)
+    conll_file = os.path.join(folder, CONLL_FILE)
     conll_train = os.path.join(extracted_folder, CONLL_TRAIN_FILE)
 
     if os.path.exists(conll_train):
@@ -50,10 +47,10 @@ def fetch(folder):
 
     # Extract annotations if not previously done
     if not os.path.exists(extracted_folder):
-        utils.create_folder(target_folder)
+        utils.create_folder(folder)
         utils.urlretrieve(CONLL_URL, conll_file)
         with tarfile.open(conll_file, "r:gz") as conll:
-            conll.extractall(target_folder)
+            conll.extractall(folder)
 
     # Put Reuters data where CoNLL03 script expects it
     shutil.copy(reuters_path, extracted_folder)

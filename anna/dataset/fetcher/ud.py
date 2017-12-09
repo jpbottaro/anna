@@ -5,8 +5,6 @@ Visit: http://universaldependencies.org"""
 import os
 from . import utils
 
-FOLDER_NAME = "universal-dependencies"
-
 UD_URL = "https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11234/"
 
 UD_LINKS = {
@@ -28,17 +26,13 @@ def fetch(folder, versions=None):
     if versions is None:
         versions = ["1.4"]
 
-    target_folder = os.path.join(folder, FOLDER_NAME)
-    utils.create_folder(target_folder)
+    utils.create_folder(folder)
     paths = []
     for ver in versions:
         if ver not in UD_LINKS:
             print("Version not supported: " + ver)
         url = UD_LINKS[ver]
-        path = os.path.join(target_folder, "ud-" + ver + ".tgz")
+        path = os.path.join(folder, "ud-" + ver + ".tgz")
         paths.append((ver, path))
         utils.urlretrieve(url, path)
     return paths
-
-if __name__ == "__main__":
-    fetch()
