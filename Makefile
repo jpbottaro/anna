@@ -6,7 +6,7 @@ venv: .venv/bin/activate
 	@touch .venv/bin/activate
 
 datasets: venv
-	@.venv/bin/python anna/datasets/main.py
+	@.venv/bin/python anna/dataset/main.py
 
 test: venv
 	@.venv/bin/python setup.py test

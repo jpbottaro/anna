@@ -23,7 +23,7 @@ REUTERS_TEXT = """To download the Reuters corpus, follow the instructions at:
 
 Once you have the RC1 file, put it at:
 
-    anna/datasets/data/""" + REUTERS_PATH
+    anna/dataset/data/""" + REUTERS_PATH
 
 
 def fetch(folder):
