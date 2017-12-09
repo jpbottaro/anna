@@ -19,3 +19,9 @@ Run tests with:
 ```bash
 make test
 ```
+
+Run all default experiments (this includes dataset fetch):
+
+```bash
+make run
+```
