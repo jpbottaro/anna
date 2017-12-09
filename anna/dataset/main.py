@@ -6,13 +6,15 @@ import fetcher.ud
 import fetcher.conll03
 import fetcher.wmt
 import fetcher.wiki
+import fetcher.reuters21578
 
 datasets = [
     ("Universal Dependencies (Morph, POS Tags)", fetcher.ud.fetch),
     ("CoNLL03 (NER)", fetcher.conll03.fetch),
     ("WMT14 (MT)", fetcher.wmt.fetch),
     ("AIDA (Entity Linking)", fetcher.aida.fetch),
-    ("Wiki", fetcher.wiki.fetch)
+    ("Wiki", fetcher.wiki.fetch),
+    ("Reuters-21578", fetcher.reuters21578.fetch)
 ]
 
 if __name__ == "__main__":
