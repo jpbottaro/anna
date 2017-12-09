@@ -1,18 +1,18 @@
 """Displays a simple menu to download datasets."""
 
 import os
-import fetchers.aida
-import fetchers.ud
-import fetchers.conll03
-import fetchers.wmt
-import fetchers.wiki
+import fetcher.aida
+import fetcher.ud
+import fetcher.conll03
+import fetcher.wmt
+import fetcher.wiki
 
 datasets = [
-    ("Universal Dependencies (Morph, POS Tags)", fetchers.ud.fetch),
-    ("CoNLL03 (NER)", fetchers.conll03.fetch),
-    ("WMT14 (MT)", fetchers.wmt.fetch),
-    ("AIDA (Entity Linking)", fetchers.aida.fetch),
-    ("Wiki", fetchers.wiki.fetch)
+    ("Universal Dependencies (Morph, POS Tags)", fetcher.ud.fetch),
+    ("CoNLL03 (NER)", fetcher.conll03.fetch),
+    ("WMT14 (MT)", fetcher.wmt.fetch),
+    ("AIDA (Entity Linking)", fetcher.aida.fetch),
+    ("Wiki", fetcher.wiki.fetch)
 ]
 
 if __name__ == "__main__":
