@@ -38,15 +38,16 @@ options = [
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: main.py DATA_FOLDER")
+        print("Usage: main.py DATA_DIR")
         exit(1)
 
     print("Select which dataset you wish to fetch:\n")
     for i, t in enumerate(options):
         print("[{}]: {}".format(i, t["name"]))
+
     num = input("\nSelect number: ")
     if num:
         print()
         data = options[int(num)]
-        datasets_folder = os.path.abspath(sys.argv[1])
-        data["fetcher"](datasets_folder)
+        datasets_dir = os.path.abspath(sys.argv[1])
+        data["fetcher"](datasets_dir)
