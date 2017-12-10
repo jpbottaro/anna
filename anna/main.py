@@ -2,7 +2,7 @@
 
 import os
 import sys
-import dataset.rcv1.parser as rcv1
+import dataset.reuters21578.parser as data
 
 
 if __name__ == "__main__":
@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     data_dir = os.path.abspath(sys.argv[1])
 
-    train_docs, test_docs, unused_docs = rcv1.fetch_and_parse(data_dir)
+    train_docs, test_docs, unused_docs = data.fetch_and_parse(data_dir)
 
     doc = test_docs[0]
     print("Text: " + doc.text[:100])
