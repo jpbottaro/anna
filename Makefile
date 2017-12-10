@@ -14,7 +14,10 @@ test: venv
 run: venv
 	@.venv/bin/python anna/main.py data
 
+notebook: venv
+	@. .venv/bin/activate && jupyter notebook --notebook-dir=notebook
+
 clean:
 	rm -rf .venv
 
-.PHONY: venv datasets test run clean
+.PHONY: venv datasets test run clean notebook
