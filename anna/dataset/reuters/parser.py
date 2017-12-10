@@ -20,10 +20,10 @@ TEST_DATES = \
      for day in range(20, 32)]
 TRAIN_DATES = \
     ["1996{:02}{:02}".format(month, day)
-     for month in range(9, 12)
+     for month in range(9, 13)
      for day in range(1, 32)] + \
     ["1997{:02}{:02}".format(month, day)
-     for month in range(1, 8)
+     for month in range(1, 13)
      for day in range(1, 32)]
 
 
