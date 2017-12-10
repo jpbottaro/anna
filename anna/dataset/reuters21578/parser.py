@@ -6,14 +6,11 @@ Parses and splits according to:
 """ # noqa
 
 import os
-import pickle
+import dataset.utils as utils
 from bs4 import BeautifulSoup
 from api.doc import Doc
 from . import fetcher
 
-TRAIN_PICKLE = "train.pickle"
-TEST_PICKLE = "test.pickle"
-UNUSED_PICKLE = "unused.pickle"
 REUTER_SGML = "reut2-{:03}.sgm"
 
 
@@ -31,31 +28,10 @@ def fetch_and_parse(data_dir):
         unused_docs (list[Doc]): unused docs acording to the "ModApte" split
     """
     reuters_dir = fetcher.fetch(data_dir)
-
-    train_path = os.path.join(reuters_dir, TRAIN_PICKLE)
-    test_path = os.path.join(reuters_dir, TEST_PICKLE)
-    unused_path = os.path.join(reuters_dir, UNUSED_PICKLE)
-
-    if not os.path.isfile(train_path):
-        train_docs, test_docs, unused_docs = parse(reuters_dir)
-
-        with open(train_path, "wb") as f:
-            pickle.dump(train_docs, f)
-        with open(test_path, "wb") as f:
-            pickle.dump(test_docs, f)
-        with open(unused_path, "wb") as f:
-            pickle.dump(unused_docs, f)
-    else:
-        with open(train_path, "rb") as f:
-            train_docs = pickle.load(f)
-        with open(test_path, "rb") as f:
-            test_docs = pickle.load(f)
-        with open(unused_path, "rb") as f:
-            unused_docs = pickle.load(f)
-
-    return train_docs, test_docs, unused_docs
+    return parse(reuters_dir)
 
 
+@utils.cache(3)
 def parse(reuters_dir):
     """
     Parses the Reuters-21578 dataset.

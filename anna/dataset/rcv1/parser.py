@@ -5,14 +5,10 @@ the sides unbalanced.
 """
 
 import os
-import pickle
 import collections
 from api.doc import Doc
 from . import fetcher
-
-TRAIN_PICKLE = "train.pickle"
-TEST_PICKLE = "test.pickle"
-UNUSED_PICKLE = "unused.pickle"
+import dataset.utils as utils
 
 
 def fetch_and_parse(data_dir):
@@ -30,31 +26,13 @@ def fetch_and_parse(data_dir):
     """
     rcv1_dir = fetcher.fetch(data_dir)
 
-    train_path = os.path.join(rcv1_dir, TRAIN_PICKLE)
-    test_path = os.path.join(rcv1_dir, TEST_PICKLE)
-    unused_path = os.path.join(rcv1_dir, UNUSED_PICKLE)
-
-    if not os.path.isfile(train_path):
-        train_docs, test_docs, unused_docs = parse(rcv1_dir)
-
-        with open(train_path, "wb") as f:
-            pickle.dump(train_docs, f)
-        with open(test_path, "wb") as f:
-            pickle.dump(test_docs, f)
-        with open(unused_path, "wb") as f:
-            pickle.dump(unused_docs, f)
-    else:
-        with open(train_path, "rb") as f:
-            train_docs = pickle.load(f)
-        with open(test_path, "rb") as f:
-            test_docs = pickle.load(f)
-        with open(unused_path, "rb") as f:
-            unused_docs = pickle.load(f)
+    train_docs, test_docs, unused_docs = parse(rcv1_dir)
 
     # Switch order of original train and test
     return test_docs, train_docs, unused_docs
 
 
+@utils.cache(return_nr=3)
 def parse(rcv1_dir):
     """
     Parses the RCV1-v2 dataset.

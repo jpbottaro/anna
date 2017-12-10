@@ -3,6 +3,7 @@
 from __future__ import division
 import os
 import sys
+import pickle
 import urllib.request
 
 
@@ -57,3 +58,60 @@ def create_folder(folder):
     except OSError:
         if not os.path.isdir(folder):
             raise
+
+
+class cache():
+    """
+    Decorator to cache the returned values of a function into pickles.
+
+    It expects the wrapped function to recieve in the first argument a folder,
+    where it will store the cached values.
+    """
+
+    def __init__(self, return_nr):
+        """
+        Create caching decorator for a function with `return_nr` number of
+        return values.
+
+        Args:
+            return_nr (int): number of return values that should be cached
+        """
+        self.return_nr = return_nr
+
+    def __call__(self, func):
+        """
+        Wraps a function, caching its return values into pickles.
+
+        Args:
+            func (function): function to wrap
+
+        Returns:
+            wrapper (function): wrapping function that avoids calling `func`
+                                if the values were calculated before
+        """
+        def wrapper(*args, **kw):
+            # We expect the first argument to be the data folder
+            data_dir = args[0]
+            saved = [(i, os.path.join(data_dir, "docs-{}.pickle".format(i)))
+                     for i in range(self.return_nr)]
+
+            # If the returned values were cached before, load them
+            values = []
+            for i, path in saved:
+                if os.path.isfile(path):
+                    with open(path, "rb") as f:
+                        values.append(pickle.load(f))
+                else:
+                    break
+
+            # If the returned values were not found, calculate and cache them
+            if len(values) != len(saved):
+                values = func(*args, **kw)
+                for i, path in saved:
+                    path = os.path.join(data_dir, "docs-{}.pickle".format(i))
+                    with open(path, "wb") as f:
+                        pickle.dump(values[i], f)
+
+            return values
+
+        return wrapper
