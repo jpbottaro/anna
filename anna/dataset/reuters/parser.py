@@ -114,10 +114,16 @@ def parse_file(path):
 
         title = article.find("title").get_text()
         text = article.find("text").get_text()
+        headline = article.find("headline")
+        if headline:
+            headline = headline.get_text()
+        dateline = article.find("dateline")
+        if dateline:
+            dateline = dateline.get_text()
         topics = article.find(class_="bip:topics:1.0")
         labels = []
         if topics:
             for topic in topics.find_all("code"):
-                labels.append(topic["code"])
+                labels.append(str(topic["code"]))
 
-        return Doc(title, text, labels)
+        return Doc(title, headline, dateline, text, labels)

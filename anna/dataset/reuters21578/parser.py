@@ -80,10 +80,22 @@ def parse(reuters_dir):
         with open(path, encoding="latin1") as fp:
             soup = BeautifulSoup(fp, "html5lib")
             for article in soup.find_all("reuters"):
-                title = article.find("title").get_text()
-                text = article.find("text").get_text()
+                title = article.find("title")
+                if title:
+                    text = str(title.find_next_sibling(string=True))
+                    title = title.get_text()
+
+                dateline = article.find("dateline")
+                if dateline:
+                    text = str(dateline.find_next_sibling(string=True))
+                    dateline = dateline.get_text()
+
+                if not text:
+                    text = article.find("text").get_text()
+
                 labels = [t.get_text() for t in article.topics.find_all("d")]
-                doc = Doc(title, text, labels)
+
+                doc = Doc(title, None, dateline, text, labels)
 
                 lewis_split = article.get("lewissplit")
                 is_topics = article.get("topics")
