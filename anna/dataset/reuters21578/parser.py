@@ -113,11 +113,12 @@ def yang_filter(train_docs, test_docs, unused_docs):
     test_labels = set([l for d in test_docs for l in d.labels])
     bad_labels = train_labels ^ test_labels
 
-    def trim(labels):
-        return [l for l in labels if l not in bad_labels]
+    # Remove all bad labels from documents
+    for doc in train_docs + test_docs:
+        doc.labels = [l for l in doc.labels if l not in bad_labels]
 
-    # Remove all docs that have no labels (or only 'bad_labels')
-    bad_docs = [d for d in train_docs + test_docs if not trim(d.labels)]
+    # Remove all docs that have no labels
+    bad_docs = [d for d in train_docs + test_docs if not d.labels]
     train_docs = [d for d in train_docs if d not in bad_docs]
     test_docs = [d for d in test_docs if d not in bad_docs]
     unused_docs = unused_docs + bad_docs
