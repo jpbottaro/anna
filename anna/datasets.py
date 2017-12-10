@@ -7,7 +7,7 @@ import dataset.ud.fetcher
 import dataset.conll03.fetcher
 import dataset.wmt.fetcher
 import dataset.wiki.fetcher
-import dataset.reuters.fetcher
+import dataset.rcv1.fetcher
 import dataset.reuters21578.fetcher
 
 options = [
@@ -29,7 +29,7 @@ options = [
     },
     {
         "name": "RCV1 (Multi-label Classification)",
-        "fetcher": dataset.reuters.fetcher.fetch
+        "fetcher": dataset.rcv1.fetcher.fetch
     },
     {
         "name": "Reuters-21578 (Multi-label Classification)",
