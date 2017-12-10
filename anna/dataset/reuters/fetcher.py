@@ -3,8 +3,10 @@
 Visit: http://www.clips.uantwerpen.be/conll2003/ner"""
 
 import os
+import tarfile
 import dataset.utils as utils
 
+REUTERS_FINAL_DIR = "rcv1"
 REUTERS_FILE = "rcv1.tar.xz"
 REUTERS_TEXT = """To download the Reuters corpus, follow the instructions at:
 
@@ -30,12 +32,18 @@ def fetch(data_dir, dest="reuters"):
 
     # Create folder
     reuters_dir = os.path.join(data_dir, dest)
-    if not os.path.exists(reuters_dir):
-        utils.create_folder(reuters_dir)
+    utils.create_folder(reuters_dir)
 
+    # Show instructions to fetch the dataset if it's not available
     reuters_file = os.path.join(reuters_dir, REUTERS_FILE)
     if not os.path.exists(reuters_file):
         print(REUTERS_TEXT.format(reuters_file))
         exit(0)
 
-    return reuters_dir
+    # Extract the file
+    final_dir = os.path.join(reuters_dir, REUTERS_FINAL_DIR)
+    if not os.path.exists(final_dir):
+        with tarfile.open(reuters_file) as reuters:
+            reuters.extractall(reuters_dir)
+
+    return final_dir

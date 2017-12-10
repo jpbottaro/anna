@@ -8,8 +8,8 @@ Parses and splits according to:
 import os
 import pickle
 from bs4 import BeautifulSoup
-from . import fetcher
 from api.doc import Doc
+from . import fetcher
 
 TRAIN_PICKLE = "train.pickle"
 TEST_PICKLE = "test.pickle"
@@ -65,7 +65,7 @@ def parse(reuters_dir):
     of "ModApte" split.
 
     Args:
-        data_dir (str): absolute path to the extracted Reuters-21578 dir
+        reuters_dir (str): absolute path to the extracted Reuters-21578 dir
 
     Returns:
         train_docs (list[Doc]): annotated articles for training
@@ -80,9 +80,10 @@ def parse(reuters_dir):
         with open(path, encoding="latin1") as fp:
             soup = BeautifulSoup(fp, "html5lib")
             for article in soup.find_all("reuters"):
+                title = article.find("title").get_text()
                 text = article.find("text").get_text()
                 labels = [t.get_text() for t in article.topics.find_all("d")]
-                doc = Doc(text, labels)
+                doc = Doc(title, text, labels)
 
                 lewis_split = article.get("lewissplit")
                 is_topics = article.get("topics")
