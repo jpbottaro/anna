@@ -5,6 +5,7 @@ import os
 import sys
 import pickle
 import urllib.request
+import numpy as np
 
 
 def reporthook(blocknum, blocksize, totalsize):
@@ -92,14 +93,18 @@ class cache():
         def wrapper(*args, **kw):
             # We expect the first argument to be the data folder
             data_dir = args[0]
-            saved = [(i, os.path.join(data_dir, "docs-{}.pickle".format(i)))
+            saved = [(i, os.path.join(data_dir, "cache-{}".format(i)))
                      for i in range(self.return_nr)]
 
             # If the returned values were cached before, load them
             values = []
             for i, path in saved:
-                if os.path.isfile(path):
-                    with open(path, "rb") as f:
+                pickle_path = path + ".pickle"
+                numpy_path = path + ".npy"
+                if os.path.isfile(numpy_path):
+                    values.append(np.load(numpy_path))
+                elif os.path.isfile(pickle_path):
+                    with open(pickle_path, "rb") as f:
                         values.append(pickle.load(f))
                 else:
                     break
@@ -108,9 +113,12 @@ class cache():
             if len(values) != len(saved):
                 values = func(*args, **kw)
                 for i, path in saved:
-                    path = os.path.join(data_dir, "docs-{}.pickle".format(i))
-                    with open(path, "wb") as f:
-                        pickle.dump(values[i], f)
+                    obj = values[i]
+                    if isinstance(obj, np.ndarray):
+                        np.save(path + ".npy", obj)
+                    else:
+                        with open(path + ".pickle", "wb") as f:
+                            pickle.dump(obj, f, protocol=4)
 
             return values
 
