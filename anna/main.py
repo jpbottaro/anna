@@ -5,7 +5,7 @@ import sys
 import dataset.reuters21578.parser as data
 import nlp.utils as nlp
 from evaluation.mlc import evaluate
-from model.binary_classifier import BinaryClassifierLearner as Learner
+from model.mlp import MLPLearner as Learner
 
 
 if __name__ == "__main__":
