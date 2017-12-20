@@ -40,11 +40,18 @@ def parse(fasttext_dir):
         voc (dict): bimap of word <-> id
         emb (numpy.array): array of embeddings for each word in `voc`
     """
-    # The first embedding is reserved for the UNK token
-    emb = [[]]
-    voc = defaultdict(int)
-    voc[0] = "UNK"
-    voc["UNK"] = 0
+    # Reserve 0 for special padding token, 1 for unknown, 2 for end of stream,
+    # and default any token not in the vocabulary to unknown
+    voc = defaultdict(lambda: 1)
+    voc[0] = "PAD"
+    voc["_PAD_"] = 0
+    voc[1] = "UNK"
+    voc["_UNK_"] = 1
+    voc[2] = "END_STREAM"
+    voc["_END_STREAM_"] = 1
+
+    # Reserve first embeddings for special tokens
+    emb = [[], [], []]
 
     first = True
     fasttext_path = os.path.join(fasttext_dir, NAME)
@@ -57,10 +64,13 @@ def parse(fasttext_dir):
 
             i = len(emb)
             parts = line.split(" ")
-            voc[parts[0]] = i
-            voc[i] = parts[0]
-            emb.append([float(n) for n in parts[1:-1]])
+            if parts[0] not in voc:
+                voc[parts[0]] = i
+                voc[i] = parts[0]
+                emb.append([float(n) for n in parts[1:-1]])
 
-    # We copy the last embedding for the UNK token
+    # We copy the last embedding for the special token
     emb[0] = emb[-1]
+    emb[1] = emb[-1]
+    emb[2] = emb[-1]
     return voc, np.array(emb)
