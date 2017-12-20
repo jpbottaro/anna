@@ -32,13 +32,5 @@ if __name__ == "__main__":
     # Predict labels for the test set
     predicted_docs = model.predict(nlp.clean(test_docs))
 
-    for i in range(2):
-        test_doc = test_docs[i]
-        predicted_doc = predicted_docs[i]
-
-        print("Text: " + str(test_doc.text[:200]))
-        print("Expected Labels: " + str(test_doc.labels))
-        print("Predicted Labels: " + str(predicted_doc.labels))
-        print()
-
+    # Print evaluation metrics
     print(evaluate(test_docs, predicted_docs, labels))
