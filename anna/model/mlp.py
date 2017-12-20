@@ -6,7 +6,6 @@ import dataset.utils as utils
 import tensorflow as tf
 from model.encoder.naive import NaiveEmbeddingEncoder
 from model.decoder.mlp import MLPDecoder
-from tensorflow.python.keras.models import Model, load_model
 
 # Use TFOptimizer as keras' cannot handle sparcity in the embedding layer well,
 # which results in big slowdowns. Replace this with stock keras optimizers when
@@ -70,18 +69,19 @@ class MLPLearner():
 
         if os.path.isfile(self.model_path):
             self._log("Loading pretrained model")
-            self.model = load_model(self.model_path, custom_objects={"tf": tf})
+            self.model = tf.keras.models.load_model(self.model_path,
+                                                    custom_objects={"tf": tf})
         else:
             self._log("Building model")
             inputs, emb = self.encoder.build()
             outputs = self.decoder.build(inputs, emb)
-            self.model = Model(inputs=inputs, outputs=outputs)
+            self.model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
         self._log("Compiling model")
         optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.01))
         self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
-    def train(self, train_docs, test_docs=None, epochs=4):
+    def train(self, train_docs, test_docs=None, epochs=5):
         """
         Trains model with the data in `train_docs`.
 

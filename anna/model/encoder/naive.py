@@ -3,8 +3,6 @@
 import nlp.utils as nlp
 import dataset.fasttext.parser as embeddings
 import tensorflow as tf
-from tensorflow.python.keras.layers import Input, Embedding, Lambda
-from tensorflow.python.keras.layers import concatenate
 
 
 class NaiveEmbeddingEncoder():
@@ -42,25 +40,27 @@ class NaiveEmbeddingEncoder():
                                                embedding
         """
 
-        x1 = Input(shape=(self.max_words,), dtype="int32", name="title_input")
-        x2 = Input(shape=(self.max_words,), dtype="int32", name="text_input")
+        x1 = tf.keras.layers.Input(shape=(self.max_words,),
+                                   dtype="int32", name="title_input")
+        x2 = tf.keras.layers.Input(shape=(self.max_words,),
+                                   dtype="int32", name="text_input")
 
         # Get embeddings
-        emb_layer = Embedding(self.emb.shape[0],
-                              self.emb.shape[1],
-                              weights=[self.emb],
-                              input_length=self.max_words,
-                              mask_zero=True)
+        emb_layer = tf.keras.layers.Embedding(self.emb.shape[0],
+                                              self.emb.shape[1],
+                                              weights=[self.emb],
+                                              input_length=self.max_words,
+                                              mask_zero=True)
         x1_emb = emb_layer(x1)
         x2_emb = emb_layer(x2)
 
         # Average all embeddings to create each text representation
-        avg_layer = Lambda(lambda x: tf.reduce_mean(x, 1))
+        avg_layer = tf.keras.layers.Lambda(lambda x: tf.reduce_mean(x, 1))
         x1_emb = avg_layer(x1_emb)
         x2_emb = avg_layer(x2_emb)
 
         # Concatenate all inputs
-        x = concatenate([x1_emb, x2_emb])
+        x = tf.keras.layers.concatenate([x1_emb, x2_emb])
 
         return [x1, x2], x
 

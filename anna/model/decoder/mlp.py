@@ -3,7 +3,6 @@
 import os
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.keras.layers import Dense, Dropout, concatenate
 
 
 class MLPDecoder():
@@ -61,16 +60,17 @@ class MLPDecoder():
                                                    outputs, one per label
         """
         for i in range(self.num_layers):
-            x = Dropout(0.5)(x)
-            x = Dense(self.hidden_size, activation="relu")(x)
+            x = tf.keras.layers.Dropout(0.5)(x)
+            x = tf.keras.layers.Dense(self.hidden_size, activation="relu")(x)
 
         # Each label gets a different, non-shared, fully connected layer
         outputs = []
         for i, label in enumerate(self.labels):
             name = "label_" + label
             if i > 0 and self.chain:
-                x = concatenate([x, outputs[i-1]])
-            outputs.append(Dense(1, activation="sigmoid", name=name)(x))
+                x = tf.keras.layers.concatenate([x, outputs[i-1]])
+            outputs.append(tf.keras.layers.Dense(1, activation="sigmoid",
+                                                 name=name)(x))
 
         return outputs
 
