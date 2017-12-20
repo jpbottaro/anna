@@ -1,41 +1,7 @@
 """Standard utilities to work with text"""
 
 import copy
-
-
-def preprocess(docs, vocabulary):
-    """
-    Applies common information extraction techniques to a doc, like
-    tokenization, stemming, and more.
-
-    Args:
-        docs (list[Doc]): list of document to analyze
-        vocabulary (dict): mapping of word to id, and id to word
-
-    Returns:
-        analyzed_docs (list[Doc]): same as `docs`, with added analysis
-    """
-    docs = [tokenize_doc(doc) for doc in docs]
-    docs = [apply_vocabulary(doc, vocabulary) for doc in docs]
-    return docs
-
-
-def tokenize_doc(doc):
-    """
-    Tokenizes all fields in a `Doc`.
-
-    Args:
-        doc (Doc): document to tokenize
-
-    Returns:
-        tokenized_doc (Doc): same as `doc`, with added tokenization
-    """
-    doc.title_tokens = tokenize(doc.title)
-    doc.headline_tokens = tokenize(doc.headline)
-    doc.dateline_tokens = tokenize(doc.dateline)
-    doc.text_tokens = tokenize(doc.text)
-    doc.labels_tokens = [tokenize(l) for l in doc.labels]
-    return doc
+from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
 
 def tokenize(text):
@@ -49,7 +15,7 @@ def tokenize(text):
         tokens (list[str]): list of tokens from `text`
     """
     if not text:
-        return None
+        return []
 
     tokens = []
     split = text.split()
@@ -93,27 +59,20 @@ def tokenize(text):
     return tokens
 
 
-def apply_vocabulary(doc, voc):
+def text_to_sequence(data, voc, max_steps=None):
     """
-    Matches all tokens in `Doc` with their appropriate id in the vocabulary.
+    Converts the given text to a array of indices, one for each word.
 
     Args:
-        doc (Doc): a tokenized document
+        data (list[str]): list of text to tokenize and map to vocabulary
+        voc (map[str->int]): vocabulary mapping tokens to ids
+        max_steps (int): maximum size for the returned sequence
 
     Returns:
-        analyzed_doc (Doc): same as `doc`, with the added ids from `voc`
+        seq (np.array): array with one word id per token in `text`
     """
-    def map_ids(tokens):
-        if not tokens:
-            return None
-        return [voc[t] for t in tokens]
-
-    doc.title_ids = map_ids(doc.title_tokens)
-    doc.headline_ids = map_ids(doc.headline_tokens)
-    doc.dateline_ids = map_ids(doc.dateline_tokens)
-    doc.text_ids = map_ids(doc.text_tokens)
-    doc.labels_ids = [map_ids(tokens) for tokens in doc.labels_tokens]
-    return doc
+    ids = [[voc[t] for t in tokenize(text)] for text in data]
+    return pad_sequences(ids, maxlen=max_steps)
 
 
 def clean(docs):
