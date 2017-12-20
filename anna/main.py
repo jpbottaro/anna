@@ -25,8 +25,9 @@ if __name__ == "__main__":
                 labels.append(l)
 
     # Create and train model
-    model = Learner(data_dir, output_labels=labels, verbose=True)
+    model = Learner(data_dir, labels, verbose=True)
     model.train(train_docs, test_docs=test_docs)
+    model.save()
 
     # Predict labels for the test set
     predicted_docs = model.predict(nlp.clean(test_docs))

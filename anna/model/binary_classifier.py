@@ -7,6 +7,7 @@ import tensorflow as tf
 from model.encoder.naive import NaiveEmbeddingEncoder
 from tensorflow.python.keras.layers import Dense
 from tensorflow.python.keras.models import Model, load_model
+from tensorflow.python.keras.layers import concatenate
 
 # Use TFOptimizer as keras' cannot handle sparcity in the embedding layer well,
 # which results in big slowdowns. Replace this with stock keras optimizers when
@@ -17,14 +18,18 @@ from tensorflow.python.keras._impl.keras.optimizers import TFOptimizer
 class BinaryClassifierLearner():
     """
     Learner for Multi-label Classification using binary classifiers.
+
+    It also allows to create a classifier chain, adding dependency between
+    each classification in the output.
     """
 
     def __init__(self,
                  data_dir,
                  output_labels,
                  name="binary_model",
-                 max_words=200,
+                 max_words=300,
                  confidence_threshold=0.3,
+                 chain=False,
                  verbose=False):
         """
         Maps a Multi-label classification problem into binary classifiers,
@@ -47,14 +52,12 @@ class BinaryClassifierLearner():
         self.confidence_threshold = confidence_threshold
         self.name = name
         self.model_dir = os.path.join(data_dir, "models")
+        self.model_path = os.path.join(self.model_dir, self.name)
         self.encoder = NaiveEmbeddingEncoder(data_dir, max_words)
 
-        utils.create_folder(self.model_dir)
-        model_path = os.path.join(self.model_dir, self.name)
-
-        if os.path.isfile(model_path):
+        if os.path.isfile(self.model_path):
             self._log("Loading pretrained model")
-            self.model = load_model(model_path, custom_objects={"tf": tf})
+            self.model = load_model(self.model_path, custom_objects={"tf": tf})
         else:
             self._log("Building model")
             inputs, emb = self.encoder.build()
@@ -63,6 +66,8 @@ class BinaryClassifierLearner():
             outputs = []
             for i, label in enumerate(output_labels):
                 name = "label_" + label
+                if i > 0 and chain:
+                    emb = concatenate([emb, outputs[i-1]])
                 outputs.append(Dense(1, activation="sigmoid", name=name)(emb))
 
             self.model = Model(inputs=inputs, outputs=outputs)
@@ -84,7 +89,6 @@ class BinaryClassifierLearner():
         output_data = self._encode_output(train_docs)
 
         self.model.fit(input_data, output_data, epochs=epochs)
-        self.model.save(os.path.join(self.model_dir, self.name))
 
     def predict(self, docs):
         """
@@ -104,6 +108,16 @@ class BinaryClassifierLearner():
             doc.labels = labels[i]
 
         return docs
+
+    def save(self):
+        """
+        Saves the model in the model directory, with the given `name`.
+
+        Args:
+            name (str): the name for the model
+        """
+        utils.create_folder(self.model_dir)
+        self.model.save(self.model_path)
 
     def _encode_output(self, docs):
         """
