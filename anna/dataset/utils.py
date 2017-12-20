@@ -1,6 +1,5 @@
 """Simple utilities to fetch datasets."""
 
-from __future__ import division
 import os
 import sys
 import pickle
