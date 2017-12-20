@@ -4,6 +4,7 @@ import os
 import sys
 import dataset.reuters21578.parser as data
 import nlp.utils as nlp
+from evaluation.mlc import evaluate
 from model.binary_classifier import BinaryClassifierLearner as Learner
 
 
@@ -17,10 +18,14 @@ if __name__ == "__main__":
 
     # Fetch and preprocess dataset
     train_docs, test_docs, unused_docs = data.fetch_and_parse(data_dir)
-    labels = set([l for d in train_docs + test_docs for l in d.labels])
+    labels = []
+    for d in train_docs + test_docs:
+        for l in d.labels:
+            if l not in labels:
+                labels.append(l)
 
     # Create and train model
-    model = Learner(data_dir, output_labels=list(labels), verbose=True)
+    model = Learner(data_dir, output_labels=labels, verbose=True)
     model.train(train_docs, test_docs=test_docs)
 
     # Predict labels for the test set
@@ -34,3 +39,5 @@ if __name__ == "__main__":
         print("Expected Labels: " + str(test_doc.labels))
         print("Predicted Labels: " + str(predicted_doc.labels))
         print()
+
+    print(evaluate(test_docs, predicted_docs, labels))
