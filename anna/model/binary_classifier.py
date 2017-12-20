@@ -5,9 +5,8 @@ import numpy as np
 import dataset.utils as utils
 import tensorflow as tf
 from model.encoder.naive import NaiveEmbeddingEncoder
-from tensorflow.python.keras.layers import Dense
+from tensorflow.python.keras.layers import Dense, Dropout, concatenate
 from tensorflow.python.keras.models import Model, load_model
-from tensorflow.python.keras.layers import concatenate
 
 # Use TFOptimizer as keras' cannot handle sparcity in the embedding layer well,
 # which results in big slowdowns. Replace this with stock keras optimizers when
@@ -28,7 +27,9 @@ class BinaryClassifierLearner():
                  output_labels,
                  name="binary_model",
                  max_words=300,
-                 confidence_threshold=0.3,
+                 confidence_threshold=0.5,
+                 num_layers=0,
+                 hidden_size=1024,
                  chain=False,
                  verbose=False):
         """
@@ -43,6 +44,12 @@ class BinaryClassifierLearner():
             max_words (int): number of words to use when embedding text fields
             confidence_threshold (float): threshold to use to select labels
                                           based on the classifier's confidence
+            num_layers (int): number of hidden layers in the MLP
+                              (default: 0)
+            hidden_size (int): size of the hidden units on each hidden layer
+                               (default: 1024)
+            chain (bool): True if classifiers' output should be chained
+                          (default: False)
             verbose (bool): print messages of progress (default: False)
         """
         self.data_dir = data_dir
@@ -60,15 +67,19 @@ class BinaryClassifierLearner():
             self.model = load_model(self.model_path, custom_objects={"tf": tf})
         else:
             self._log("Building model")
-            inputs, emb = self.encoder.build()
+            inputs, x = self.encoder.build()
+
+            for i in range(num_layers):
+                x = Dropout(0.5)(x)
+                x = Dense(hidden_size, activation="relu")(x)
 
             # Each label gets a different, non-shared, fully connected layer
             outputs = []
             for i, label in enumerate(output_labels):
                 name = "label_" + label
                 if i > 0 and chain:
-                    emb = concatenate([emb, outputs[i-1]])
-                outputs.append(Dense(1, activation="sigmoid", name=name)(emb))
+                    x = concatenate([x, outputs[i-1]])
+                outputs.append(Dense(1, activation="sigmoid", name=name)(x))
 
             self.model = Model(inputs=inputs, outputs=outputs)
 
@@ -76,7 +87,7 @@ class BinaryClassifierLearner():
         optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.01))
         self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
-    def train(self, train_docs, test_docs=None, epochs=3):
+    def train(self, train_docs, test_docs=None, epochs=10):
         """
         Trains model with the data in `train_docs`.
 
@@ -87,7 +98,6 @@ class BinaryClassifierLearner():
         """
         input_data = self.encoder.encode(train_docs)
         output_data = self._encode_output(train_docs)
-
         self.model.fit(input_data, output_data, epochs=epochs)
 
     def predict(self, docs):
@@ -134,7 +144,6 @@ class BinaryClassifierLearner():
         for label in self.output_labels:
             labels.append(
                 np.array([[1. if label in d.labels else 0.] for d in docs]))
-
         return labels
 
     def _decode_output(self, outputs):
@@ -157,7 +166,6 @@ class BinaryClassifierLearner():
             for j in range(num_docs):
                 if tensor[j] > self.confidence_threshold:
                     labels[j].append(label)
-
         return labels
 
     def _log(self, text):
