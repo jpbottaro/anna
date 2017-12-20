@@ -5,6 +5,7 @@ Visit: https://fasttext.cc/docs/en/english-vectors.html#format"""
 import os
 import numpy as np
 import dataset.utils as utils
+from collections import defaultdict
 from . import fetcher
 
 NAME = "wiki-news-300d-1M.vec"
@@ -39,8 +40,12 @@ def parse(fasttext_dir):
         voc (dict): bimap of word <-> id
         emb (numpy.array): array of embeddings for each word in `voc`
     """
-    voc = {}
-    emb = []
+    # The first embedding is reserved for the UNK token
+    emb = [[]]
+    voc = defaultdict(int)
+    voc[0] = "UNK"
+    voc["UNK"] = 0
+
     first = True
     fasttext_path = os.path.join(fasttext_dir, NAME)
     with open(fasttext_path) as f:
@@ -55,4 +60,7 @@ def parse(fasttext_dir):
             voc[parts[0]] = i
             voc[i] = parts[0]
             emb.append([float(n) for n in parts[1:-1]])
+
+    # We copy the last embedding for the UNK token
+    emb[0] = emb[-1]
     return voc, np.array(emb)
