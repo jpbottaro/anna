@@ -1,6 +1,5 @@
 """Standard utilities to work with text"""
 
-import copy
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
 
@@ -73,19 +72,3 @@ def text_to_sequence(data, voc, max_steps=None):
     """
     ids = [[voc[t] for t in tokenize(text)] for text in data]
     return pad_sequences(ids, maxlen=max_steps)
-
-
-def clean(docs):
-    """
-    Returns a new set of documents like `docs`, but without the labels.
-
-    Args:
-        docs (list[Doc]): list of document to clean
-
-    Returns:
-        analyzed_docs (list[Doc]): same as `docs`, without labels
-    """
-    new_docs = [copy.copy(d) for d in docs]
-    for doc in new_docs:
-        doc.labels = []
-    return new_docs

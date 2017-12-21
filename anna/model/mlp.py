@@ -2,10 +2,11 @@
 
 import os
 import numpy as np
-import dataset.utils as utils
 import tensorflow as tf
+import dataset.utils
+from evaluation.mlc import clean, evaluate
 from model.encoder.naive import NaiveEmbeddingEncoder
-from model.decoder.mlp import MLPDecoder
+from model.decoder.feedforward import FeedForwardDecoder
 
 # Use TFOptimizer as keras' cannot handle sparcity in the embedding layer well,
 # which results in big slowdowns. Replace this with stock keras optimizers when
@@ -15,7 +16,7 @@ from tensorflow.python.keras._impl.keras.optimizers import TFOptimizer
 
 class MLPLearner():
     """
-    Learner for Multi-label Classification using MLP.
+    Learner for Multi-label Classification using a MLP.
 
     It also allows to create a classifier chain, adding dependency between
     each classification in the output.
@@ -23,7 +24,7 @@ class MLPLearner():
 
     def __init__(self,
                  data_dir,
-                 output_labels,
+                 labels,
                  name="mlp",
                  max_words=300,
                  confidence_threshold=0.5,
@@ -38,7 +39,7 @@ class MLPLearner():
 
         Args:
             data_dir (str): path to the folder where datasets are stored
-            output_labels (list[str]): list of possible outputs
+            labels (list[str]): list of possible outputs
             name (str): name of the model (used when serializing to disk)
             max_words (int): number of words to use when embedding text fields
             confidence_threshold (float): threshold to use to select labels
@@ -54,18 +55,18 @@ class MLPLearner():
         self.data_dir = data_dir
         self.max_words = max_words
         self.verbose = verbose
-        self.output_labels = output_labels
+        self.labels = labels
         self.confidence_threshold = confidence_threshold
         self.name = name
         self.model_dir = os.path.join(data_dir, "models")
         self.model_path = os.path.join(self.model_dir, name)
         self.encoder = NaiveEmbeddingEncoder(data_dir, max_words)
-        self.decoder = MLPDecoder(data_dir,
-                                  output_labels,
-                                  confidence_threshold,
-                                  num_layers,
-                                  hidden_size,
-                                  chain)
+        self.decoder = FeedForwardDecoder(data_dir,
+                                          labels,
+                                          confidence_threshold,
+                                          num_layers,
+                                          hidden_size,
+                                          chain)
 
         if os.path.isfile(self.model_path):
             self._log("Loading pretrained model")
@@ -92,7 +93,8 @@ class MLPLearner():
         """
         input_data = self.encoder.encode(train_docs)
         output_data = self.decoder.encode([d.labels for d in train_docs])
-        self.model.fit(input_data, output_data, epochs=epochs)
+        self.model.fit(input_data, output_data, epochs=epochs,
+                       callbacks=[self._evaluate(test_docs)])
 
     def predict(self, docs):
         """
@@ -120,8 +122,27 @@ class MLPLearner():
         Args:
             name (str): the name for the model
         """
-        utils.create_folder(self.model_dir)
+        dataset.utils.create_folder(self.model_dir)
         self.model.save(self.model_path)
+
+    def _evaluate(self, docs):
+        """
+        Creates a tf.keras.callback.Callback that evaluates the current model
+        agains the given `docs`.
+
+        Args:
+            docs (list[Doc]): list of document to evaulate against
+
+        Returns:
+            callback (tf.keras.callbacks.Callback): a callback that prints eval
+                                                    metrics for the model
+        """
+        def f(epoch, logs):
+            if docs:
+                predicted_docs = self.predict(clean(docs))
+                print(evaluate(docs, predicted_docs, self.labels))
+
+        return tf.keras.callbacks.LambdaCallback(on_epoch_end=f)
 
     def _log(self, text):
         """

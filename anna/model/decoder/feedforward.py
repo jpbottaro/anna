@@ -1,11 +1,11 @@
-"""MLP-based decoder for Multi-label Classification."""
+"""MLP/FFN-based decoder for Multi-label Classification."""
 
 import os
 import numpy as np
 import tensorflow as tf
 
 
-class MLPDecoder():
+class FeedForwardDecoder():
     """
     MLP-based decoder for Multi-label Classification, mapping each possible
     label with a single 1/0 classifier.
@@ -86,9 +86,11 @@ class MLPDecoder():
             output (list[np.array]): encoded label sets from `labels`
         """
         output = []
+
         for label in self.labels:
             output.append(
                 np.array([[1. if label in l else 0.] for l in labels]))
+
         return output
 
     def decode(self, outputs):
@@ -111,4 +113,5 @@ class MLPDecoder():
             for j in range(num_docs):
                 if tensor[j] > self.confidence_threshold:
                     labels[j].append(label)
+
         return labels

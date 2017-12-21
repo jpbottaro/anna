@@ -3,8 +3,7 @@
 import os
 import sys
 import dataset.reuters21578.parser as data
-import nlp.utils as nlp
-from evaluation.mlc import evaluate
+from evaluation.mlc import clean, evaluate
 from model.mlp import MLPLearner as Learner
 
 
@@ -24,13 +23,8 @@ if __name__ == "__main__":
             if l not in labels:
                 labels.append(l)
 
-    # Create and train model
-    model = Learner(data_dir, labels, verbose=True)
-    model.train(train_docs, test_docs=test_docs)
-    model.save()
-
-    # Predict labels for the test set
-    predicted_docs = model.predict(nlp.clean(test_docs))
-
-    # Print evaluation metrics
-    print(evaluate(test_docs, predicted_docs, labels))
+    for layers in range(3):
+        # Create and train model
+        model = Learner(data_dir, labels, num_layers=layers,
+                        name="mlp_" + str(layers), verbose=True)
+        model.train(train_docs, test_docs=test_docs)

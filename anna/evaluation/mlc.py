@@ -1,5 +1,6 @@
 """Evaluation metrics for Multi-label Classification"""
 
+import copy
 from collections import Counter
 
 
@@ -108,3 +109,19 @@ def evaluate(expected, predicted, labels):
     exp = [doc.labels for doc in expected]
     pred = [doc.labels for doc in predicted]
     return Metrics(exp, pred, labels)
+
+
+def clean(docs):
+    """
+    Returns a new set of documents like `docs`, but without the labels.
+
+    Args:
+        docs (list[Doc]): list of document to clean
+
+    Returns:
+        analyzed_docs (list[Doc]): same as `docs`, without labels
+    """
+    new_docs = [copy.copy(d) for d in docs]
+    for doc in new_docs:
+        doc.labels = []
+    return new_docs
