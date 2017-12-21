@@ -3,7 +3,6 @@
 import os
 import sys
 import dataset.reuters21578.parser as data
-from evaluation.mlc import clean, evaluate
 from model.mlp import MLPLearner as Learner
 
 
