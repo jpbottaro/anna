@@ -1,6 +1,6 @@
 """Fetches and processes RCV1-v2 for Multi-label Clasiffication
 
-Visit: http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_rcv1v2_README.htm""" # noqa
+Visit: http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_rcv1v2_README.htm"""  # noqa
 
 import os
 import gzip

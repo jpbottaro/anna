@@ -1,9 +1,11 @@
 """Reads the Reuters-21578 dataset
 
 Parses and splits according to:
-    Yang, Yiming. (2001). A Study on Thresholding Strategies for Text Categorization.
-    SIGIR Forum (ACM Special Interest Group on Information Retrieval). 10.1145/383952.383975.
-""" # noqa
+    Yang, Yiming. (2001)
+    A Study on Thresholding Strategies for Text Categorization.
+    SIGIR Forum (ACM Special Interest Group on Information Retrieval)
+    10.1145/383952.383975.
+"""
 
 import os
 import dataset.utils as utils

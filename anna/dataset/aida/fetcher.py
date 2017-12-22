@@ -1,6 +1,6 @@
 """Fetches and processes the AIDA dataset
 
-Visit: https://www.mpi-inf.mpg.de/departments/databases-and-information-systems/research/yago-naga/aida/downloads/""" # noqa
+Visit: https://www.mpi-inf.mpg.de/departments/databases-and-information-systems/research/yago-naga/aida/downloads/"""  # noqa
 
 import os
 import zipfile

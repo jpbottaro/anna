@@ -150,7 +150,7 @@ class MLPLearner():
         new_names = []
         new_tensors = []
         for name, tensor in zip(model.metrics_names, model.metrics_tensors):
-            if not "label_" in name:
+            if "label_" not in name:
                 new_names.append(name)
                 new_tensors.append(tensor)
         model.metrics_names = new_names

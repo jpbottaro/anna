@@ -1,6 +1,6 @@
 """Fetches the Reuters-21578 dataset for Multi-label Classification
 
-Visit: https://archive.ics.uci.edu/ml/datasets/Reuters-21578+Text+Categorization+Collection""" # noqa
+Visit: https://archive.ics.uci.edu/ml/datasets/Reuters-21578+Text+Categorization+Collection"""  # noqa
 
 
 import os
