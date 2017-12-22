@@ -264,4 +264,5 @@ class EvaluationCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
         metrics = self.evaluate()
         self.metrics.append(metrics)
+        print()
         print(metrics)

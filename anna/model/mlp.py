@@ -88,6 +88,9 @@ class MLPLearner():
         optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.01))
         self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
+        # TODO: Add metric filtering to Keras
+        self._fix_metrics(self.model)
+
     def train(self, train_docs, callbacks=None, val_split=0.1, epochs=5):
         """
         Trains model with the data in `train_docs`.
@@ -136,6 +139,22 @@ class MLPLearner():
             name (str): the name for the model
         """
         self.model.save(self.model_path)
+
+    def _fix_metrics(self, model):
+        """
+        Removes unneded metrics in the model.
+
+        Args:
+            model (tf.keras.models.Model): keras model to modify
+        """
+        new_names = []
+        new_tensors = []
+        for name, tensor in zip(model.metrics_names, model.metrics_tensors):
+            if not "label_" in name:
+                new_names.append(name)
+                new_tensors.append(tensor)
+        model.metrics_names = new_names
+        model.metrics_tensors = new_tensors
 
     def _log(self, text):
         """
