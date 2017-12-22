@@ -82,7 +82,7 @@ class MLPLearner():
         optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.01))
         self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
-    def train(self, train_docs, test_docs=None, epochs=5):
+    def train(self, train_docs, callbacks=None, epochs=5):
         """
         Trains model with the data in `train_docs`.
 
@@ -90,11 +90,14 @@ class MLPLearner():
             train_docs (list[Doc]): list of document for training
             test_docs (list[Doc]): list of document for testing. Only for
                                    metrics, not use in the learning process
+
+        Returns:
+            history (History): keras' history, with record of loss values, etc.
         """
         input_data = self.encoder.encode(train_docs)
         output_data = self.decoder.encode([d.labels for d in train_docs])
-        self.model.fit(input_data, output_data, epochs=epochs,
-                       callbacks=[self._evaluate(test_docs)])
+        return self.model.fit(input_data, output_data, epochs=epochs,
+                              callbacks=callbacks)
 
     def predict(self, docs):
         """
@@ -124,25 +127,6 @@ class MLPLearner():
         """
         dataset.utils.create_folder(self.model_dir)
         self.model.save(self.model_path)
-
-    def _evaluate(self, docs):
-        """
-        Creates a tf.keras.callback.Callback that evaluates the current model
-        agains the given `docs`.
-
-        Args:
-            docs (list[Doc]): list of document to evaulate against
-
-        Returns:
-            callback (tf.keras.callbacks.Callback): a callback that prints eval
-                                                    metrics for the model
-        """
-        def f(epoch, logs):
-            if docs:
-                predicted_docs = self.predict(clean(docs))
-                print(evaluate(docs, predicted_docs, self.labels))
-
-        return tf.keras.callbacks.LambdaCallback(on_epoch_end=f)
 
     def _log(self, text):
         """
