@@ -4,7 +4,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import dataset.utils
-from evaluation.mlc import clean, evaluate
+from evaluation.mlc import EvaluationCallback
 from model.encoder.naive import NaiveEmbeddingEncoder
 from model.decoder.feedforward import FeedForwardDecoder
 
@@ -91,26 +91,29 @@ class MLPLearner():
         # TODO: Add metric filtering to Keras
         self._fix_metrics(self.model)
 
-    def train(self, train_docs, callbacks=None, val_split=0.1, epochs=5):
+    def train(self, train_docs, test_docs=None, val_split=0.1, epochs=5):
         """
         Trains model with the data in `train_docs`.
 
         Args:
             train_docs (list[Doc]): list of document for training
-            callbacks (list[Callback]): list of keras callbacks to add for
-                                        training
+            test_docs (list[Doc]): list of document for test evaluation (only
+                                   for reporting, no training decisions are
+                                   made with this set).
             val_split (float): fraction of `train_docs` to use for validation
             epochs (int): number of epochs to run the data for training
 
         Returns:
             history (History): keras' history, with record of loss values, etc.
         """
+        evaluator = EvaluationCallback(self.predict, test_docs, self.labels)
+
         input_data = self.encoder.encode(train_docs)
         output_data = self.decoder.encode([d.labels for d in train_docs])
         return self.model.fit(input_data, output_data,
                               epochs=epochs,
                               validation_split=val_split,
-                              callbacks=callbacks + [self.checkpointer])
+                              callbacks=[evaluator, self.checkpointer])
 
     def predict(self, docs):
         """

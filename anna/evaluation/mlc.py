@@ -237,12 +237,13 @@ def clean(docs):
 class EvaluationCallback(tf.keras.callbacks.Callback):
     """Keras callback to report metrics on test documents"""
 
-    def __init__(self, learner, docs, labels):
+    def __init__(self, predictor, docs, labels):
         """
         Evaluates the given `model` against `docs`.
 
         Args:
-            model (Learner): a model that creates predictions for an MLC task
+            predictor (callable): a function that returns predictions for
+                                  a set of documents
             docs (list[Doc]): list of document with true labels
             labels (list[str]): all the possible labels in the task
 
@@ -250,12 +251,12 @@ class EvaluationCallback(tf.keras.callbacks.Callback):
             metrics (Metrics): metrics evaluating `model` on `docs`
         """
         super().__init__()
-        self.learner = learner
+        self.predictor = predictor
         self.docs = docs
         self.labels = labels
 
     def evaluate(self):
-        predicted_docs = self.learner.predict(clean(self.docs))
+        predicted_docs = self.predictor(clean(self.docs))
         return evaluate(self.docs, predicted_docs, self.labels)
 
     def on_train_begin(self, logs={}):

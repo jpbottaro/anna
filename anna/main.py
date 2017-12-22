@@ -3,7 +3,6 @@
 import os
 import sys
 import dataset.reuters21578.parser as data
-from evaluation.mlc import EvaluationCallback
 from model.mlp import MLPLearner as Learner
 
 
@@ -26,6 +25,5 @@ if __name__ == "__main__":
     # Create MLP with 1 hidden layer
     model = Learner(data_dir, labels, num_layers=1, verbose=True)
 
-    # Train model, reporting evaluation metrics
-    evaluator = EvaluationCallback(model, test_docs, labels)
-    model.train(train_docs, callbacks=[evaluator])
+    # Train model
+    model.train(train_docs, test_docs)
