@@ -82,14 +82,16 @@ class MLPLearner():
         optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.01))
         self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
-    def train(self, train_docs, callbacks=None, epochs=5):
+    def train(self, train_docs, callbacks=None, val_split=0.1, epochs=5):
         """
         Trains model with the data in `train_docs`.
 
         Args:
             train_docs (list[Doc]): list of document for training
-            test_docs (list[Doc]): list of document for testing. Only for
-                                   metrics, not use in the learning process
+            callbacks (list[Callback]): list of keras callbacks to add for
+                                        training
+            val_split (float): fraction of `train_docs` to use for validation
+            epochs (int): number of epochs to run the data for training
 
         Returns:
             history (History): keras' history, with record of loss values, etc.
@@ -97,7 +99,7 @@ class MLPLearner():
         input_data = self.encoder.encode(train_docs)
         output_data = self.decoder.encode([d.labels for d in train_docs])
         return self.model.fit(input_data, output_data, epochs=epochs,
-                              callbacks=callbacks)
+                              validation_split=0.1, callbacks=callbacks)
 
     def predict(self, docs):
         """
