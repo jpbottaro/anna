@@ -60,6 +60,11 @@ class MLPLearner():
         self.name = name
         self.model_dir = os.path.join(data_dir, "models")
         self.model_path = os.path.join(self.model_dir, name)
+        self.checkpointer = \
+            tf.keras.callbacks.ModelCheckpoint(self.model_path,
+                                               verbose=1,
+                                               save_best_only=True)
+
         self.encoder = NaiveEmbeddingEncoder(data_dir, max_words)
         self.decoder = FeedForwardDecoder(data_dir,
                                           labels,
@@ -68,6 +73,7 @@ class MLPLearner():
                                           hidden_size,
                                           chain)
 
+        dataset.utils.create_folder(self.model_dir)
         if os.path.isfile(self.model_path):
             self._log("Loading pretrained model")
             self.model = tf.keras.models.load_model(self.model_path,
@@ -98,8 +104,10 @@ class MLPLearner():
         """
         input_data = self.encoder.encode(train_docs)
         output_data = self.decoder.encode([d.labels for d in train_docs])
-        return self.model.fit(input_data, output_data, epochs=epochs,
-                              validation_split=0.1, callbacks=callbacks)
+        return self.model.fit(input_data, output_data,
+                              epochs=epochs,
+                              validation_split=val_split,
+                              callbacks=callbacks + [self.checkpointer])
 
     def predict(self, docs):
         """
@@ -127,7 +135,6 @@ class MLPLearner():
         Args:
             name (str): the name for the model
         """
-        dataset.utils.create_folder(self.model_dir)
         self.model.save(self.model_path)
 
     def _log(self, text):

@@ -31,11 +31,8 @@ class FeedForwardDecoder():
             confidence_threshold (float): threshold to use to select labels
                                           based on the classifier's confidence
             num_layers (int): number of hidden layers in the MLP
-                              (default: 0)
             hidden_size (int): size of the hidden units on each hidden layer
-                               (default: 1024)
             chain (bool): True if classifiers' output should be chained
-                          (default: False)
         """
         self.data_dir = data_dir
         self.labels = labels
