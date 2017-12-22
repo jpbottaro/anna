@@ -1,4 +1,4 @@
-tensorflow==1.4.0
+tensorflow==1.4.1
 beautifulsoup4==4.6.0
 matplotlib
 numpy
