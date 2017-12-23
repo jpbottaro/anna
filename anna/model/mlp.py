@@ -31,6 +31,7 @@ class MLP():
                  num_layers=2,
                  hidden_size=1024,
                  chain=False,
+                 train_emb=True,
                  verbose=False):
         """
         Maps a Multi-label classification problem into binary classifiers,
@@ -50,6 +51,8 @@ class MLP():
                                (default: 1024)
             chain (bool): True if classifiers' output should be chained
                           (default: False)
+            train_emb (bool): True if word embeddings should be trainable
+                          (default: False)
             verbose (bool): print messages of progress (default: False)
         """
         self.data_dir = data_dir
@@ -62,7 +65,7 @@ class MLP():
         self.model_path = os.path.join(self.model_dir, name)
 
         # Encode doc as average of its initial `max_words` word embeddings
-        self.encoder = NaiveEmbeddingEncoder(data_dir, max_words)
+        self.encoder = NaiveEmbeddingEncoder(data_dir, max_words, train_emb)
 
         # Classify labels with independent logistic regressions
         self.decoder = FeedForwardDecoder(data_dir,
@@ -90,7 +93,7 @@ class MLP():
         # TODO: Add metric filtering to Keras
         self._fix_metrics(self.model)
 
-    def train(self, docs, test_docs=None, val_split=0.1, epochs=25):
+    def train(self, docs, test_docs=None, val_split=0.1, epochs=50):
         """
         Trains model with the data in `train_docs`.
 
@@ -112,7 +115,7 @@ class MLP():
         val_eval = Evaluator("val", self.predict, val_docs, self.labels)
         test_eval = Evaluator("test", self.predict, test_docs, self.labels)
         stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
-                                                patience=5,
+                                                patience=10,
                                                 verbose=self.verbose)
         save = tf.keras.callbacks.ModelCheckpoint(self.model_path,
                                                   monitor="val_acc",
