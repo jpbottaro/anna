@@ -14,6 +14,9 @@ def subset_accuracy(expected, predicted, labels):
         predicted (list[list[str]]): list of predicted label lists per doc
         labels (list[str]): all the possible labels in the task
     """
+    if len(expected) == 0 or len(labels) == 0:
+        return 1.
+
     correct = 0
     for e, p in zip(expected, predicted):
         if Counter(e) == Counter(p):
@@ -33,6 +36,9 @@ def hamming_accuracy(expected, predicted, labels):
     Returns:
         value (float): result of the metric against `predicted`
     """
+    if len(expected) == 0 or len(labels) == 0:
+        return 1.
+
     correct = 0
     for e, p in zip(expected, predicted):
         for l in labels:
@@ -56,6 +62,9 @@ def example_based_f1(expected, predicted, labels):
     Returns:
         value (float): result of the metric against `predicted`
     """
+    if len(expected) == 0 or len(labels) == 0:
+        return 1.
+
     value = 0
     for e, p in zip(expected, predicted):
         total_positives = 0
@@ -101,7 +110,10 @@ def micro_f1(expected, predicted, labels):
                 false_pos += 1
             elif in_p and not in_e:
                 false_pos += 1
-    return (2 * true_pos) / ((2 * true_pos) + false_neg + false_pos)
+    div = (2 * true_pos) + false_neg + false_pos
+    if div == 0:
+        return 1.
+    return (2 * true_pos) / div
 
 
 def macro_f1(expected, predicted, labels):
@@ -121,6 +133,9 @@ def macro_f1(expected, predicted, labels):
     Returns:
         value (float): result of the metric against `predicted`
     """
+    if len(labels) == 0:
+        return 1.
+
     value = 0
     for l in labels:
         true_pos = 0
@@ -135,13 +150,17 @@ def macro_f1(expected, predicted, labels):
                 false_pos += 1
             elif in_p and not in_e:
                 false_pos += 1
-        value += (2 * true_pos) / ((2 * true_pos) + false_neg + false_pos)
+        div = (2 * true_pos) + false_neg + false_pos
+        if div == 0:
+            value += 1.
+        else:
+            value += (2 * true_pos) / div
     return value / len(labels)
 
 
 all_metrics = {
-    "subset_acc": subset_accuracy,
-    "hamming_acc": hamming_accuracy,
+    "acc": subset_accuracy,
+    "hamming": hamming_accuracy,
     "ebf1": example_based_f1,
     "mif1": micro_f1,
     "maf1": macro_f1
@@ -183,16 +202,17 @@ def clean(docs):
     return new_docs
 
 
-class EvaluationCallback(tf.keras.callbacks.Callback):
+class Evaluator(tf.keras.callbacks.Callback):
     """Keras callback to report metrics on test documents"""
 
-    def __init__(self, predictor, docs, labels):
+    def __init__(self, prefix, predict, docs, labels):
         """
         Evaluates the given `model` against `docs`.
 
         Args:
-            predictor (callable): a function that returns predictions for
-                                  a set of documents
+            prefix (str): prefix name for all metrics added to `logs`
+            predict (callable): a function that returns predictions for a
+                                set of documents
             docs (list[Doc]): list of document with true labels
             labels (list[str]): all the possible labels in the task
 
@@ -200,19 +220,20 @@ class EvaluationCallback(tf.keras.callbacks.Callback):
             metrics (Metrics): metrics evaluating `model` on `docs`
         """
         super().__init__()
-        self.predictor = predictor
+        self.prefix = prefix
+        self.predict = predict
         self.docs = docs
         self.labels = labels
 
     def evaluate(self):
-        predicted_docs = self.predictor(clean(self.docs))
+        predicted_docs = self.predict(clean(self.docs))
         return evaluate(self.docs, predicted_docs, self.labels)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
         metrics = self.evaluate()
         for name, value in metrics.items():
-            logs[name] = value
+            logs[self.prefix + "_" + name] = value
         print()
-        print(", ".join(["{} = {:.4f}".format(n, v)
-                         for n, v in metrics.items()]))
+        print(self.prefix + " - " + ", ".join(["{}: {:.4f}".format(n, v)
+                                               for n, v in metrics.items()]))

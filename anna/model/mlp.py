@@ -4,7 +4,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import dataset.utils
-from evaluation.mlc import EvaluationCallback
+from evaluation.mlc import Evaluator
 from model.encoder.naive import NaiveEmbeddingEncoder
 from model.decoder.feedforward import FeedForwardDecoder
 
@@ -54,7 +54,7 @@ class MLP():
         """
         self.data_dir = data_dir
         self.max_words = max_words
-        self.verbose = verbose
+        self.verbose = 1 if verbose else 0
         self.labels = labels
         self.confidence_threshold = confidence_threshold
         self.name = name
@@ -85,41 +85,48 @@ class MLP():
 
         self._log("Compiling model")
         optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.001))
-        self.model.compile(optimizer=optimizer,
-                           loss="binary_crossentropy",
-                           metrics=["acc"])
+        self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
         # TODO: Add metric filtering to Keras
         self._fix_metrics(self.model)
 
-    def train(self, train_docs, test_docs=None, val_split=0.1, epochs=25):
+    def train(self, docs, test_docs=None, val_split=0.1, epochs=25):
         """
         Trains model with the data in `train_docs`.
 
         Args:
-            train_docs (list[Doc]): list of document for training
+            docs (list[Doc]): list of document for training
             test_docs (list[Doc]): list of document for test evaluation (only
                                    for reporting, no training decisions are
                                    made with this set).
-            val_split (float): fraction of `train_docs` to use for validation
+            val_split (float): fraction of `docs` to use for validation
             epochs (int): number of epochs to run the data for training
 
         Returns:
             history (History): keras' history, with record of loss values, etc.
         """
-        evaluate = EvaluationCallback(self.predict, test_docs, self.labels)
-        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc", patience=5)
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(self.model_path,
-                                                        monitor="val_acc",
-                                                        verbose=1,
-                                                        save_best_only=True)
+        split = int(len(docs) * (1. - val_split))
+        train_docs = docs[0:split]
+        val_docs = docs[split:]
 
-        input_data = self.encoder.encode(train_docs)
-        output_data = self.decoder.encode([d.labels for d in train_docs])
-        return self.model.fit(input_data, output_data,
+        val_eval = Evaluator("val", self.predict, val_docs, self.labels)
+        test_eval = Evaluator("test", self.predict, test_docs, self.labels)
+        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
+                                                patience=5,
+                                                verbose=self.verbose)
+        save = tf.keras.callbacks.ModelCheckpoint(self.model_path,
+                                                  monitor="val_acc",
+                                                  verbose=self.verbose,
+                                                  save_best_only=True)
+
+        train_x = self.encoder.encode(train_docs)
+        train_y = self.decoder.encode([d.labels for d in train_docs])
+        val_x = self.encoder.encode(val_docs)
+        val_y = self.decoder.encode([d.labels for d in val_docs])
+        return self.model.fit(train_x, train_y,
                               epochs=epochs,
-                              validation_split=val_split,
-                              callbacks=[evaluate, stop, checkpoint])
+                              validation_data=(val_x, val_y),
+                              callbacks=[val_eval, test_eval, stop, save])
 
     def predict(self, docs):
         """

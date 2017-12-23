@@ -26,4 +26,4 @@ if __name__ == "__main__":
     model = MLP(data_dir, labels, verbose=True)
 
     # Train model
-    print(model.train(train_docs, test_docs))
+    model.train(train_docs, test_docs)
