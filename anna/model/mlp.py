@@ -107,9 +107,8 @@ class MLP():
         Returns:
             history (History): keras' history, with record of loss values, etc.
         """
-        evaluator = EvaluationCallback(self.predict, test_docs, self.labels)
-        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
-                                                patience=5)
+        evaluate = EvaluationCallback(self.predict, test_docs, self.labels)
+        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc", patience=5)
         checkpoint = tf.keras.callbacks.ModelCheckpoint(self.model_path,
                                                         monitor="val_acc",
                                                         verbose=1,
@@ -120,7 +119,7 @@ class MLP():
         return self.model.fit(input_data, output_data,
                               epochs=epochs,
                               validation_split=val_split,
-                              callbacks=[evaluator, stop, checkpoint])
+                              callbacks=[evaluate, stop, checkpoint])
 
     def predict(self, docs):
         """
