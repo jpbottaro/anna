@@ -3,7 +3,7 @@
 import os
 import sys
 import dataset.reuters21578.parser as data
-from model.mlp import MLPLearner as Learner
+from model.mlp import MLP
 
 
 if __name__ == "__main__":
@@ -22,8 +22,8 @@ if __name__ == "__main__":
             if l not in labels:
                 labels.append(l)
 
-    # Create MLP with 1 hidden layer
-    model = Learner(data_dir, labels, num_layers=1, verbose=True)
+    # Create MLP with 2 hidden layer
+    model = MLP(data_dir, labels, verbose=True)
 
     # Train model
-    model.train(train_docs, test_docs)
+    print(model.train(train_docs, test_docs))

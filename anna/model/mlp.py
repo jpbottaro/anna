@@ -14,9 +14,9 @@ from model.decoder.feedforward import FeedForwardDecoder
 from tensorflow.python.keras._impl.keras.optimizers import TFOptimizer
 
 
-class MLPLearner():
+class MLP():
     """
-    Learner for Multi-label Classification using a MLP.
+    Multi-label Classification using a Multilayer Perceptron.
 
     It also allows to create a classifier chain, adding dependency between
     each classification in the output.
@@ -28,7 +28,7 @@ class MLPLearner():
                  name="mlp",
                  max_words=300,
                  confidence_threshold=0.5,
-                 num_layers=0,
+                 num_layers=2,
                  hidden_size=1024,
                  chain=False,
                  verbose=False):
@@ -60,12 +60,11 @@ class MLPLearner():
         self.name = name
         self.model_dir = os.path.join(data_dir, "models")
         self.model_path = os.path.join(self.model_dir, name)
-        self.checkpointer = \
-            tf.keras.callbacks.ModelCheckpoint(self.model_path,
-                                               verbose=1,
-                                               save_best_only=True)
 
+        # Encode doc as average of its initial `max_words` word embeddings
         self.encoder = NaiveEmbeddingEncoder(data_dir, max_words)
+
+        # Classify labels with independent logistic regressions
         self.decoder = FeedForwardDecoder(data_dir,
                                           labels,
                                           confidence_threshold,
@@ -85,13 +84,15 @@ class MLPLearner():
             self.model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
         self._log("Compiling model")
-        optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.01))
-        self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
+        optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.001))
+        self.model.compile(optimizer=optimizer,
+                           loss="binary_crossentropy",
+                           metrics=["acc"])
 
         # TODO: Add metric filtering to Keras
         self._fix_metrics(self.model)
 
-    def train(self, train_docs, test_docs=None, val_split=0.1, epochs=5):
+    def train(self, train_docs, test_docs=None, val_split=0.1, epochs=25):
         """
         Trains model with the data in `train_docs`.
 
@@ -107,13 +108,19 @@ class MLPLearner():
             history (History): keras' history, with record of loss values, etc.
         """
         evaluator = EvaluationCallback(self.predict, test_docs, self.labels)
+        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
+                                                patience=5)
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(self.model_path,
+                                                        monitor="val_acc",
+                                                        verbose=1,
+                                                        save_best_only=True)
 
         input_data = self.encoder.encode(train_docs)
         output_data = self.decoder.encode([d.labels for d in train_docs])
         return self.model.fit(input_data, output_data,
                               epochs=epochs,
                               validation_split=val_split,
-                              callbacks=[evaluator, self.checkpointer])
+                              callbacks=[evaluator, stop, checkpoint])
 
     def predict(self, docs):
         """
