@@ -14,25 +14,18 @@ from model.decoder.feedforward import FeedForwardDecoder
 from tensorflow.python.keras._impl.keras.optimizers import TFOptimizer
 
 
-class MLP():
+class Trainer():
     """
-    Multi-label Classification using a Multilayer Perceptron.
-
-    It also allows to create a classifier chain, adding dependency between
-    each classification in the output.
+    Trains Multi-label Classification models. Generalizes most common models
+    using:
+        - Encoder: Takes the input and creates a tensor representation (e.g.
+                   average word embeddings, RNN, etc.)
+        - Decoder: Original input and output from the encoder, and builds the
+                   result (e.g. feedforward, classifier chains, RNN, etc.)
     """
 
-    def __init__(self,
-                 data_dir,
-                 labels,
-                 name="mlp",
-                 max_words=300,
-                 confidence_threshold=0.5,
-                 num_layers=2,
-                 hidden_size=1024,
-                 chain=False,
-                 train_emb=True,
-                 verbose=False):
+    def __init__(self, data_dir, labels, name, encoder, decoder,
+                 optimizer, verbose=True):
         """
         Maps a Multi-label classification problem into binary classifiers,
         having one independent classifier for each label. All models share
@@ -42,38 +35,20 @@ class MLP():
             data_dir (str): path to the folder where datasets are stored
             labels (list[str]): list of possible outputs
             name (str): name of the model (used when serializing to disk)
-            max_words (int): number of words to use when embedding text fields
-            confidence_threshold (float): threshold to use to select labels
-                                          based on the classifier's confidence
-            num_layers (int): number of hidden layers in the MLP
-                              (default: 0)
-            hidden_size (int): size of the hidden units on each hidden layer
-                               (default: 1024)
-            chain (bool): True if classifiers' output should be chained
-                          (default: False)
-            train_emb (bool): True if word embeddings should be trainable
-                          (default: False)
+            encoder (Encoder): encoder model to process the input
+            decoder (Decoder): decoder model to process encoded input and
+                               produce the MLC labels
+            optimizer (Optimizer): Keras optimizer to use for training
             verbose (bool): print messages of progress (default: False)
         """
         self.data_dir = data_dir
-        self.max_words = max_words
-        self.verbose = 1 if verbose else 0
         self.labels = labels
-        self.confidence_threshold = confidence_threshold
         self.name = name
+        self.encoder = encoder
+        self.decoder = decoder
+        self.verbose = 1 if verbose else 0
         self.model_dir = os.path.join(data_dir, "models")
         self.model_path = os.path.join(self.model_dir, name)
-
-        # Encode doc as average of its initial `max_words` word embeddings
-        self.encoder = NaiveEmbeddingEncoder(data_dir, max_words, train_emb)
-
-        # Classify labels with independent logistic regressions
-        self.decoder = FeedForwardDecoder(data_dir,
-                                          labels,
-                                          confidence_threshold,
-                                          num_layers,
-                                          hidden_size,
-                                          chain)
 
         dataset.utils.create_folder(self.model_dir)
         if os.path.isfile(self.model_path):
@@ -87,8 +62,7 @@ class MLP():
             self.model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
         self._log("Compiling model")
-        optimizer = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=0.001))
-        self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
+        self.model.compile(optimizer=optimizer, loss=decoder.get_loss())
 
         # TODO: Add metric filtering to Keras
         self._fix_metrics(self.model)
@@ -114,11 +88,11 @@ class MLP():
 
         val_eval = Evaluator("val", self.predict, val_docs, self.labels)
         test_eval = Evaluator("test", self.predict, test_docs, self.labels)
-        stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss",
+        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
                                                 patience=20,
                                                 verbose=self.verbose)
         save = tf.keras.callbacks.ModelCheckpoint(self.model_path,
-                                                  monitor="val_loss",
+                                                  monitor="val_acc",
                                                   verbose=self.verbose,
                                                   save_best_only=True)
 
@@ -161,7 +135,8 @@ class MLP():
 
     def _fix_metrics(self, model):
         """
-        Removes unneded metrics in the model.
+        Removes unneded metrics in the model. Very hacky, might be a possible
+        addition to Keras.
 
         Args:
             model (tf.keras.models.Model): keras model to modify
@@ -185,3 +160,57 @@ class MLP():
         """
         if self.verbose:
             print(text)
+
+
+class MLP(Trainer):
+    """
+    Maps a Multi-label classification problem into binary classifiers,
+    having one independent classifier for each label. All outputs share
+    the core embedding layer.
+    """
+
+    def __init__(self,
+                 data_dir,
+                 labels,
+                 name="mlp",
+                 max_words=300,
+                 confidence_threshold=0.5,
+                 num_layers=2,
+                 hidden_size=1024,
+                 chain=False,
+                 train_emb=True,
+                 verbose=True):
+        """
+        Maps a Multi-label classification problem into binary classifiers,
+        having one independent classifier for each label. All models share
+        the core embedding layer.
+
+        Args:
+            data_dir (str): path to the folder where datasets are stored
+            labels (list[str]): list of possible outputs
+            name (str): name of the model (used when serializing to disk)
+            max_words (int): number of words to use when embedding text fields
+            confidence_threshold (float): threshold to use to select labels
+                                          based on the classifier's confidence
+            num_layers (int): number of hidden layers in the MLP
+                              (default: 2)
+            hidden_size (int): size of the hidden units on each hidden layer
+                               (default: 1024)
+            chain (bool): True if classifiers' output should be chained
+                          (default: False)
+            train_emb (bool): True if word embeddings should be trainable
+                          (default: True)
+            verbose (bool): print messages of progress (default: True)
+        """
+        # Encode doc as average of its initial `max_words` word embeddings
+        encoder = NaiveEmbeddingEncoder(data_dir, max_words, train_emb)
+
+        # Classify labels with independent logistic regressions
+        decoder = FeedForwardDecoder(data_dir, labels, confidence_threshold,
+                                     num_layers, hidden_size, chain)
+
+        # Optimizer (wraps a TF optimizer as keras' is bad with sparce updates)
+        optimizer = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=0.001))
+
+        super().__init__(data_dir, labels, name, encoder, decoder, optimizer,
+                         verbose)

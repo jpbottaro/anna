@@ -112,3 +112,12 @@ class FeedForwardDecoder():
                     labels[j].append(label)
 
         return labels
+
+    def get_loss(self):
+        """
+        Returns the loss that should be used in the Keras model.
+
+        Returns:
+            loss (Loss): loss used for this model
+        """
+        return "binary_crossentropy"

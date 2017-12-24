@@ -32,7 +32,7 @@ def fetch_and_parse(data_dir):
     return test_docs, train_docs, unused_docs
 
 
-@utils.cache(return_nr=3)
+@utils.cache(3)
 def parse(rcv1_dir):
     """
     Parses the RCV1-v2 dataset.
