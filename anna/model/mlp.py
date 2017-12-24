@@ -87,7 +87,7 @@ class MLP():
             self.model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
         self._log("Compiling model")
-        optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.001))
+        optimizer = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=0.001))
         self.model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
         # TODO: Add metric filtering to Keras
@@ -114,11 +114,11 @@ class MLP():
 
         val_eval = Evaluator("val", self.predict, val_docs, self.labels)
         test_eval = Evaluator("test", self.predict, test_docs, self.labels)
-        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
-                                                patience=10,
+        stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss",
+                                                patience=20,
                                                 verbose=self.verbose)
         save = tf.keras.callbacks.ModelCheckpoint(self.model_path,
-                                                  monitor="val_acc",
+                                                  monitor="val_loss",
                                                   verbose=self.verbose,
                                                   save_best_only=True)
 
