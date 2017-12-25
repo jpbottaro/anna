@@ -11,13 +11,14 @@ from . import fetcher
 NAME = "wiki-news-300d-1M.vec"
 
 
-def fetch_and_parse(data_dir):
+def fetch_and_parse(data_dir, voc_size=None):
     """
     Fetches and parses the fasttext word embeddings dataset. The dataset is
     also cached as a pickle for further calls.
 
     Args:
         data_dir (str): absolute path to the dir where datasets are stored
+        voc_size (int): maximum size of the vocabulary, None for no limit
 
     Returns:
         voc (dict): bimap of word <-> id
@@ -25,7 +26,16 @@ def fetch_and_parse(data_dir):
     """
     fasttext_dir = fetcher.fetch(data_dir)
 
-    return parse(fasttext_dir)
+    voc, emb = parse(fasttext_dir, voc_size)
+
+    if voc_size:
+        emb = emb[:voc_size]
+        for k, v in list(voc.items()):
+            if isinstance(k, int) and k >= voc_size:
+                del voc[k]
+                del voc[v]
+
+    return voc, emb
 
 
 @utils.cache(2)
@@ -53,10 +63,12 @@ def parse(fasttext_dir):
     # Reserve first embeddings for special tokens
     emb = [[], [], []]
 
-    first = True
     fasttext_path = os.path.join(fasttext_dir, NAME)
     with open(fasttext_path) as f:
         for line in f:
+            if len(emb) > voc_size:
+                break
+
             # First line contains # words and embedding sizes, skip
             if first:
                 first = False

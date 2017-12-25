@@ -177,6 +177,7 @@ class MLP(Trainer):
                  confidence_threshold=0.5,
                  num_layers=2,
                  hidden_size=1024,
+                 voc_size=200000,
                  chain=False,
                  train_emb=True,
                  verbose=True):
@@ -203,7 +204,8 @@ class MLP(Trainer):
             verbose (bool): print messages of progress (default: True)
         """
         # Encode doc as average of its initial `max_words` word embeddings
-        encoder = NaiveEmbeddingEncoder(data_dir, max_words, train_emb)
+        encoder = NaiveEmbeddingEncoder(data_dir, max_words,
+                                        train_emb, voc_size)
 
         # Classify labels with independent logistic regressions
         decoder = FeedForwardDecoder(data_dir, labels, confidence_threshold,

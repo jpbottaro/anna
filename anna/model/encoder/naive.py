@@ -10,7 +10,7 @@ class NaiveEmbeddingEncoder():
     Encodes a given document as an average of its word embeddings.
     """
 
-    def __init__(self, data_dir, max_words, train_emb):
+    def __init__(self, data_dir, max_words, train_emb, voc_size=None):
         """
         Creates an encoder that represents a document as the average of its
         first `max_words` words' embeddings. This is done for each field in the
@@ -25,7 +25,7 @@ class NaiveEmbeddingEncoder():
         self.data_dir = data_dir
         self.max_words = max_words
         self.train_emb = train_emb
-        self.voc, self.emb = embeddings.fetch_and_parse(data_dir)
+        self.voc, self.emb = embeddings.fetch_and_parse(data_dir, voc_size)
 
     def build(self):
         """
@@ -39,7 +39,6 @@ class NaiveEmbeddingEncoder():
             embedding (tf.keras.layers.Layer): a layer/tensor with the doc
                                                embedding
         """
-
         x1 = tf.keras.layers.Input(shape=(self.max_words,),
                                    dtype="int32", name="title_input")
         x2 = tf.keras.layers.Input(shape=(self.max_words,),
