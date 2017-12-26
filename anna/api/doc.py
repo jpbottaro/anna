@@ -19,3 +19,6 @@ class Doc:
         self.dateline = dateline
         self.text = text
         self.labels = labels
+
+    def __str__(self):
+        return self.title
