@@ -1,14 +1,28 @@
 """Standard utilities to work with text"""
 
-from tensorflow.python.keras.preprocessing.sequence import pad_sequences
+import re
+import tensorflow as tf
 
 
-def tokenize(text):
+# Find numbers, examples: -1 | 123 | 1.324e10 | 1,234.24
+number_finder = re.compile(r"[+-]?(\d+,?)+(?:\.\d+)?(?:[eE][+-]?\d+)?")
+
+
+def tokenize(text,
+             remove="\"#()*+<=>@[\\]^_`{|}~\t\n",
+             separate="?!/'%$&,.;:",
+             number_token="1"):
     """
-    Tokenizes the given `text`.
+    Tokenizes the given `text`. Removes all tokens in `remove`, and splits
+    the ones in `separate`.
+
+    If `number_token` is not None, all numbers are modified to this token.
 
     Args:
         text (str): a piece of text to tokenize
+        remove (str): chars that should be removed
+        separate (str): chars that should separate tokens (and kept)
+        number_token (str): token to use for all numbers
 
     Returns:
         tokens (list[str]): list of tokens from `text`
@@ -16,46 +30,15 @@ def tokenize(text):
     if not text:
         return []
 
-    tokens = []
-    split = text.split()
-    for s in split:
-        s = s.strip()
-        if s == "":
-            continue
+    if number_token:
+        text = number_finder.sub(number_token, text)
 
-        # Separate leading punctuation
-        if len(s) > 1:
-            if s[0] == "(" or s[0] == "\"" or s[0] == "'":
-                tokens.append(s[0])
-                s = s[1:]
+    remover = str.maketrans({c: " " for c in remove})
+    separator = str.maketrans({c: " " + c for c in separate})
+    text = text.translate(remover)
+    text = text.translate(separator)
 
-        # Separate contractions
-        apos_index = s.find("'")
-        while apos_index > 0 and apos_index < len(s):
-            tokens.append(s[:apos_index])
-            s = s[apos_index:]
-            apos_index = s.find("'")
-
-        # Separate "/"
-        parts = s.split("/")
-        for part in parts[:-1]:
-            tokens.append(part)
-            tokens.append("/")
-        s = parts[-1]
-
-        # Separate ending punctuation
-        if len(s) > 1:
-            if (s[-1] == "." and s[-2].islower()) \
-                    or s[-1] == "," \
-                    or s[-1] == ")" \
-                    or s[-1] == "'" \
-                    or s[-1] == "\"" \
-                    or s[-1] == ";":
-                tokens.append(s[:-1])
-                s = s[-1]
-
-        tokens.append(s)
-    return tokens
+    return [t for t in text.split() if t]
 
 
 def text_to_sequence(data, voc, max_steps=None):
@@ -71,4 +54,4 @@ def text_to_sequence(data, voc, max_steps=None):
         seq (np.array): array with one word id per token in `text`
     """
     ids = [[voc[t] for t in tokenize(text)] for text in data]
-    return pad_sequences(ids, maxlen=max_steps)
+    return tf.keras.preprocessing.sequence.pad_sequences(ids, maxlen=max_steps)
