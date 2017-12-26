@@ -61,6 +61,7 @@ class Trainer():
             outputs = self.decoder.build(inputs, emb)
             self.model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
+        # The optimizer isn't Keras, so even loaded models have to be compiled
         self._log("Compiling model")
         self.model.compile(optimizer=optimizer, loss=decoder.get_loss())
 
@@ -82,10 +83,12 @@ class Trainer():
         Returns:
             history (History): keras' history, with record of loss values, etc.
         """
+        # Split train and validation docs
         split = int(len(docs) * (1. - val_split))
         train_docs = docs[0:split]
         val_docs = docs[split:]
 
+        # Callbacks for evaluating, early-stopping and saving models
         val_eval = Evaluator("val", self.predict, val_docs, self.labels)
         test_eval = Evaluator("test", self.predict, test_docs, self.labels)
         stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
@@ -96,6 +99,7 @@ class Trainer():
                                                   verbose=self.verbose,
                                                   save_best_only=True)
 
+        # Encode input and train!
         train_x = self.encoder.encode(train_docs)
         train_y = self.decoder.encode([d.labels for d in train_docs])
         val_x = self.encoder.encode(val_docs)
@@ -177,7 +181,7 @@ class MLP(Trainer):
                  confidence_threshold=0.5,
                  num_layers=2,
                  hidden_size=1024,
-                 voc_size=200000,
+                 voc_size=150000,
                  chain=False,
                  train_emb=True,
                  verbose=True):
@@ -212,7 +216,7 @@ class MLP(Trainer):
                                      num_layers, hidden_size, chain)
 
         # Optimizer (wraps a TF optimizer as keras' is bad with sparce updates)
-        optimizer = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=0.001))
+        optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.001))
 
         super().__init__(data_dir, labels, name, encoder, decoder, optimizer,
                          verbose)
