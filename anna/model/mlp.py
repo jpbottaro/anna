@@ -176,14 +176,15 @@ class MLP(Trainer):
     def __init__(self,
                  data_dir,
                  labels,
-                 name="mlp",
+                 name=None,
                  max_words=300,
                  confidence_threshold=0.5,
                  num_layers=2,
                  hidden_size=1024,
-                 voc_size=150000,
+                 voc_size=250000,
                  chain=False,
                  train_emb=True,
+                 optimizer="adam",
                  verbose=True):
         """
         Maps a Multi-label classification problem into binary classifiers,
@@ -194,6 +195,7 @@ class MLP(Trainer):
             data_dir (str): path to the folder where datasets are stored
             labels (list[str]): list of possible outputs
             name (str): name of the model (used when serializing to disk)
+                        (default: combination of parameters)
             max_words (int): number of words to use when embedding text fields
             confidence_threshold (float): threshold to use to select labels
                                           based on the classifier's confidence
@@ -205,6 +207,7 @@ class MLP(Trainer):
                           (default: False)
             train_emb (bool): True if word embeddings should be trainable
                           (default: True)
+            optimizer (str): one of: adam, rmsprop, momentum (default: adam)
             verbose (bool): print messages of progress (default: True)
         """
         # Encode doc as average of its initial `max_words` word embeddings
@@ -215,8 +218,21 @@ class MLP(Trainer):
         decoder = FeedForwardDecoder(data_dir, labels, confidence_threshold,
                                      num_layers, hidden_size, chain)
 
-        # Optimizer (wraps a TF optimizer as keras' is bad with sparce updates)
-        optimizer = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.001))
+        # Optimizer (use TF optimizer as keras' is bad with sparce updates)
+        if optimizer == "adam":
+            opt = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.001))
+        elif optimizer == "rmsprop":
+            opt = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=0.001))
+        elif optimizer == "momentum":
+            opt = TFOptimizer(tf.train.MomentumOptimizer(learning_rate=0.001))
+        else:
+            raise ValueError("Unrecognized optimizer: {}".format(optimizer))
 
-        super().__init__(data_dir, labels, name, encoder, decoder, optimizer,
+        # Generate name
+        if not name:
+            name = "mlp_{}_layers-{}_voc-{}_chain-{}_emb-{}_hidden-{}_words-{}"
+            name = name.format(optimizer, num_layers, voc_size, chain,
+                               train_emb, hidden_size, max_words)
+
+        super().__init__(data_dir, labels, name, encoder, decoder, opt,
                          verbose)
