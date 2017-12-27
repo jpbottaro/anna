@@ -41,12 +41,13 @@ class NaiveEmbeddingEncoder():
             embedding (tf.keras.layers.Layer): a layer/tensor with the doc
                                                embedding
         """
+        # (batch, word)
         x1 = tf.keras.layers.Input(shape=(self.max_words,),
                                    dtype="int32", name="title_input")
         x2 = tf.keras.layers.Input(shape=(self.max_words,),
                                    dtype="int32", name="text_input")
 
-        # Get embeddings
+        # (batch, word, emb)
         emb_layer = tf.keras.layers.Embedding(self.emb.shape[0],
                                               self.emb.shape[1],
                                               weights=[self.emb],
@@ -57,11 +58,13 @@ class NaiveEmbeddingEncoder():
         x2_emb = emb_layer(x2)
 
         # Average all embeddings to create each text representation
+        # (batch, emb)
         avg_layer = tf.keras.layers.Lambda(lambda x: tf.reduce_mean(x, 1))
         x1_emb = avg_layer(x1_emb)
         x2_emb = avg_layer(x2_emb)
 
         # Concatenate all inputs
+        # (batch, emb * num_inputs)
         x = tf.keras.layers.concatenate([x1_emb, x2_emb])
 
         return [x1, x2], x
