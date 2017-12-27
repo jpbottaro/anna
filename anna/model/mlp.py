@@ -25,7 +25,7 @@ class Trainer():
     """
 
     def __init__(self, data_dir, labels, name, encoder, decoder,
-                 optimizer, verbose=True):
+                 optimizer, metric, save, verbose=True):
         """
         Maps a Multi-label classification problem into binary classifiers,
         having one independent classifier for each label. All models share
@@ -39,6 +39,8 @@ class Trainer():
             decoder (Decoder): decoder model to process encoded input and
                                produce the MLC labels
             optimizer (Optimizer): Keras optimizer to use for training
+            metric (str): metric to optimize (e.g. val_loss, val_ebf1, etc.)
+            save (bool): save the best resulting model
             verbose (bool): print messages of progress (default: False)
         """
         self.data_dir = data_dir
@@ -46,6 +48,8 @@ class Trainer():
         self.name = name
         self.encoder = encoder
         self.decoder = decoder
+        self.metric = metric
+        self.save = save
         self.verbose = 1 if verbose else 0
         self.model_dir = os.path.join(data_dir, "models")
         self.model_path = os.path.join(self.model_dir, name)
@@ -88,16 +92,24 @@ class Trainer():
         train_docs = docs[0:split]
         val_docs = docs[split:]
 
-        # Callbacks for evaluating, early-stopping and saving models
+        # Callbacks for evaluation, early-stopping and learning-rate schedule
+        mode = "min" if "loss" in self.metric else "max"
         val_eval = Evaluator("val", self.predict, val_docs, self.labels)
         test_eval = Evaluator("test", self.predict, test_docs, self.labels)
-        stop = tf.keras.callbacks.EarlyStopping(monitor="val_acc",
+        stop = tf.keras.callbacks.EarlyStopping(monitor=self.metric,
                                                 patience=20,
+                                                mode=mode,
                                                 verbose=self.verbose)
-        save = tf.keras.callbacks.ModelCheckpoint(self.model_path,
-                                                  monitor="val_acc",
-                                                  verbose=self.verbose,
-                                                  save_best_only=True)
+        callbacks = [val_eval, test_eval, stop]
+
+        # Save best performing model
+        if self.save:
+            saver = tf.keras.callbacks.ModelCheckpoint(self.model_path,
+                                                       monitor=self.metric,
+                                                       save_best_only=True,
+                                                       mode=mode,
+                                                       verbose=self.verbose)
+            callbacks.append(saver)
 
         # Encode input and train!
         train_x = self.encoder.encode(train_docs)
@@ -107,7 +119,7 @@ class Trainer():
         return self.model.fit(train_x, train_y,
                               epochs=epochs,
                               validation_data=(val_x, val_y),
-                              callbacks=[val_eval, test_eval, stop, save])
+                              callbacks=callbacks)
 
     def predict(self, docs):
         """
@@ -178,14 +190,15 @@ class MLP(Trainer):
                  labels,
                  name=None,
                  optimizer="adam",
+                 metric="val_ebf1",
                  max_words=300,
-                 confidence_threshold=0.5,
                  num_layers=2,
                  hidden_size=1024,
-                 voc_size=200000,
+                 voc_size=300000,
                  chain=False,
                  fixed_emb=False,
                  hinge=False,
+                 save=False,
                  verbose=True):
         """
         Maps a Multi-label classification problem into binary classifiers,
@@ -199,22 +212,23 @@ class MLP(Trainer):
                         (default: combination of parameters)
             optimizer (str): one of: adam, rmsprop, momentum
                              (default: adam)
+            metric (str): metric to optimize (e.g. val_loss, val_acc, etc.)
+                          (default: val_ebf1)
             max_words (int): number of words to use when embedding text fields
                              (default: 300)
-            confidence_threshold (float): threshold for classifier's confidence
-                                          (default: 0.5)
             num_layers (int): number of hidden layers in the MLP
                               (default: 2)
             hidden_size (int): size of the hidden units on each hidden layer
                                (default: 1024)
             voc_size (int): maximum size of the word vocabulary
-                            (default: 200000)
+                            (default: 300000)
             chain (bool): True if classifiers' output should be chained
                           (default: False)
             fixed_emb (bool): True if word embeddings shouldn't be trainable
                               (default: False)
             hinge (bool): True if loss should be hinge (i.e. maximum margin)
                           (default: False)
+            save (bool): always save the best model (default: False)
             verbose (bool): print messages of progress (default: True)
         """
         # Encode doc as average of its initial `max_words` word embeddings
@@ -222,17 +236,20 @@ class MLP(Trainer):
                                         fixed_emb, voc_size)
 
         # Classify labels with independent logistic regressions
-        decoder = FeedForwardDecoder(data_dir, labels, confidence_threshold,
-                                     num_layers, hidden_size, chain, hinge)
+        decoder = FeedForwardDecoder(data_dir, labels, num_layers,
+                                     hidden_size, chain, hinge)
+
 
         # Optimizer (use TF optimizer as keras' is bad with sparce updates)
+        lr = 0.001
         if optimizer == "adam":
-            opt = TFOptimizer(tf.train.AdamOptimizer(learning_rate=0.001))
+            opt = TFOptimizer(tf.train.AdamOptimizer(learning_rate=lr))
         elif optimizer == "rmsprop":
-            opt = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=0.001))
+            opt = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=lr))
         elif optimizer == "momentum":
-            opt = TFOptimizer(tf.train.MomentumOptimizer(
-                learning_rate=0.001, momentum=0.9, use_nesterov=True))
+            opt = TFOptimizer(tf.train.MomentumOptimizer(learning_rate=lr,
+                                                         momentum=0.9,
+                                                         use_nesterov=True))
         else:
             raise ValueError("Unrecognized optimizer: {}".format(optimizer))
 
@@ -244,5 +261,5 @@ class MLP(Trainer):
                                "_chain" if chain else "",
                                "_fixed-emb" if fixed_emb else "")
 
-        super().__init__(data_dir, labels, name, encoder, decoder, opt,
-                         verbose)
+        super().__init__(data_dir, labels, name, encoder, decoder, opt, metric,
+                         save, verbose)
