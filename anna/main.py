@@ -23,7 +23,7 @@ if __name__ == "__main__":
                 labels.append(l)
 
     # Create MLP with 2 hidden layer
-    model = MLP(data_dir, labels, verbose=True)
+    model = MLP(data_dir, labels)
 
     # Train model
     model.train(train_docs, test_docs)

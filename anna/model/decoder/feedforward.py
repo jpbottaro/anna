@@ -20,7 +20,8 @@ class FeedForwardDecoder():
                  confidence_threshold,
                  num_layers,
                  hidden_size,
-                 chain):
+                 chain,
+                 hinge):
         """
         Maps a Multi-label classification problem into binary classifiers,
         having one independent MLP-like classifier for each label.
@@ -33,6 +34,7 @@ class FeedForwardDecoder():
             num_layers (int): number of hidden layers in the MLP
             hidden_size (int): size of the hidden units on each hidden layer
             chain (bool): True if classifiers' output should be chained
+            hinge (bool): True if loss should be hinge (i.e. maximum margin)
         """
         self.data_dir = data_dir
         self.labels = labels
@@ -40,6 +42,7 @@ class FeedForwardDecoder():
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.chain = chain
+        self.loss = "binary_crossentropy"
 
     def build(self, inputs, x):
         """
@@ -112,12 +115,3 @@ class FeedForwardDecoder():
                     labels[j].append(label)
 
         return labels
-
-    def get_loss(self):
-        """
-        Returns the loss that should be used in the Keras model.
-
-        Returns:
-            loss (Loss): loss used for this model
-        """
-        return "binary_crossentropy"

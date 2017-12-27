@@ -63,7 +63,7 @@ class Trainer():
 
         # The optimizer isn't Keras, so even loaded models have to be compiled
         self._log("Compiling model")
-        self.model.compile(optimizer=optimizer, loss=decoder.get_loss())
+        self.model.compile(optimizer=optimizer, loss=decoder.loss)
 
         # TODO: Add metric filtering to Keras
         self._fix_metrics(self.model)
@@ -177,14 +177,15 @@ class MLP(Trainer):
                  data_dir,
                  labels,
                  name=None,
+                 optimizer="adam",
                  max_words=300,
                  confidence_threshold=0.5,
                  num_layers=2,
                  hidden_size=1024,
-                 voc_size=250000,
+                 voc_size=200000,
                  chain=False,
-                 train_emb=True,
-                 optimizer="adam",
+                 fixed_emb=False,
+                 hinge=False,
                  verbose=True):
         """
         Maps a Multi-label classification problem into binary classifiers,
@@ -196,27 +197,33 @@ class MLP(Trainer):
             labels (list[str]): list of possible outputs
             name (str): name of the model (used when serializing to disk)
                         (default: combination of parameters)
+            optimizer (str): one of: adam, rmsprop, momentum
+                             (default: adam)
             max_words (int): number of words to use when embedding text fields
-            confidence_threshold (float): threshold to use to select labels
-                                          based on the classifier's confidence
+                             (default: 300)
+            confidence_threshold (float): threshold for classifier's confidence
+                                          (default: 0.5)
             num_layers (int): number of hidden layers in the MLP
                               (default: 2)
             hidden_size (int): size of the hidden units on each hidden layer
                                (default: 1024)
+            voc_size (int): maximum size of the word vocabulary
+                            (default: 200000)
             chain (bool): True if classifiers' output should be chained
                           (default: False)
-            train_emb (bool): True if word embeddings should be trainable
-                          (default: True)
-            optimizer (str): one of: adam, rmsprop, momentum (default: adam)
+            fixed_emb (bool): True if word embeddings shouldn't be trainable
+                              (default: False)
+            hinge (bool): True if loss should be hinge (i.e. maximum margin)
+                          (default: False)
             verbose (bool): print messages of progress (default: True)
         """
         # Encode doc as average of its initial `max_words` word embeddings
         encoder = NaiveEmbeddingEncoder(data_dir, max_words,
-                                        train_emb, voc_size)
+                                        fixed_emb, voc_size)
 
         # Classify labels with independent logistic regressions
         decoder = FeedForwardDecoder(data_dir, labels, confidence_threshold,
-                                     num_layers, hidden_size, chain)
+                                     num_layers, hidden_size, chain, hinge)
 
         # Optimizer (use TF optimizer as keras' is bad with sparce updates)
         if optimizer == "adam":
@@ -224,15 +231,18 @@ class MLP(Trainer):
         elif optimizer == "rmsprop":
             opt = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=0.001))
         elif optimizer == "momentum":
-            opt = TFOptimizer(tf.train.MomentumOptimizer(learning_rate=0.001))
+            opt = TFOptimizer(tf.train.MomentumOptimizer(
+                learning_rate=0.001, momentum=0.9, use_nesterov=True))
         else:
             raise ValueError("Unrecognized optimizer: {}".format(optimizer))
 
         # Generate name
         if not name:
-            name = "mlp_{}_layers-{}_voc-{}_chain-{}_emb-{}_hidden-{}_words-{}"
-            name = name.format(optimizer, num_layers, voc_size, chain,
-                               train_emb, hidden_size, max_words)
+            name = "mlp_{}_layers-{}_voc-{}_hidden-{}{}{}{}"
+            name = name.format(optimizer, num_layers, voc_size, hidden_size,
+                               "_hinge" if hinge else "",
+                               "_chain" if chain else "",
+                               "_fixed-emb" if fixed_emb else "")
 
         super().__init__(data_dir, labels, name, encoder, decoder, opt,
                          verbose)

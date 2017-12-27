@@ -10,7 +10,7 @@ class NaiveEmbeddingEncoder():
     Encodes a given document as an average of its word embeddings.
     """
 
-    def __init__(self, data_dir, max_words, train_emb, voc_size=None):
+    def __init__(self, data_dir, max_words, fixed_emb, voc_size):
         """
         Creates an encoder that represents a document as the average of its
         first `max_words` words' embeddings. This is done for each field in the
@@ -20,11 +20,13 @@ class NaiveEmbeddingEncoder():
         Args:
             data_dir (str): path to the folder where datasets are stored
             max_words (int): number of words to use when embedding text fields
-            train_emb (bool): True if word embeddings should be trainable
+            fixed_emb (bool): True if word embeddings shouldn't be trainable
+            voc_size (int): maximum size of the word vocabulary
+                            (default: 200000)
         """
         self.data_dir = data_dir
         self.max_words = max_words
-        self.train_emb = train_emb
+        self.train_emb = not fixed_emb
         self.voc, self.emb = embeddings.fetch_and_parse(data_dir, voc_size)
 
     def build(self):
