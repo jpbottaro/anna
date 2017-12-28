@@ -22,7 +22,6 @@ class NaiveEmbeddingEncoder():
             max_words (int): number of words to use when embedding text fields
             fixed_emb (bool): True if word embeddings shouldn't be trainable
             voc_size (int): maximum size of the word vocabulary
-                            (default: 200000)
         """
         self.data_dir = data_dir
         self.max_words = max_words
