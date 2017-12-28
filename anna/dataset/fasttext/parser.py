@@ -53,12 +53,12 @@ def parse(fasttext_dir):
     # Reserve 0 for special padding token, 1 for unknown, 2 for end of stream,
     # and default any token not in the vocabulary to unknown
     voc = defaultdict(lambda: 1)
-    voc[0] = "PAD"
+    voc[0] = "_PAD_"
     voc["_PAD_"] = 0
-    voc[1] = "UNK"
+    voc[1] = "_UNK_"
     voc["_UNK_"] = 1
-    voc[2] = "END_STREAM"
-    voc["_END_STREAM_"] = 1
+    voc[2] = "_END_"
+    voc["_END_"] = 1
 
     # Reserve first embeddings for special tokens
     emb = [[], [], []]
