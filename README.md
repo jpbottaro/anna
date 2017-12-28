@@ -8,20 +8,14 @@ A series of experiments using neural nets with tensorflow.
 
 ## How to run
 
-Fetch datasets with:
-
-```bash
-make datasets
-```
-
-Run tests with:
-
-```bash
-make test
-```
-
-Run all default experiments (this includes dataset fetch):
+Requires python 3. Run example with:
 
 ```bash
 make run
+```
+
+Browse and/or run notebooks with all other experiments/datasets:
+
+```bash
+make notebook
 ```
