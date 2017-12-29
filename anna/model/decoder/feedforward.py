@@ -45,21 +45,27 @@ class FeedForwardDecoder():
             self.loss = binary_crossentropy
             self.output_reg = None
 
-    def build(self, inputs, x):
+    def build(self, inputs, fixed_emb, var_emb):
         """
         Builds the MLP classification layer, as a series of binary classifiers
         for each possible label.
 
         Args:
             inputs (list[tf.keras.layers.Input]): list of inputs of the model
-            embedding (tf.keras.layers.Layer): a layer/tensor with the doc
-                                               embedding to use as starting
-                                               ground.
+            fixed_emb (tf.keras.layers.Layer): a layer/tensor with a fixed
+                                               embedding of the input
+            var_emb (tf.keras.layers.Layer): a layer/tensor with an variable
+                                             embedding of the input, decoder
+                                             would need to process it (e.g.
+                                             using attention)
 
         Returns:
             outputs (list[tf.keras.layers.Layer]): list of binary classifier
                                                    outputs, one per label
         """
+        # (batch, emb_size)
+        x = fixed_emb
+
         # (batch, hidden_size)
         for i in range(self.num_layers):
             x = tf.keras.layers.Dropout(0.5)(x)

@@ -1,4 +1,4 @@
-"""Encoder-Decoder network using RNNs"""
+"""MLC model using RNNs for encoding."""
 
 import os
 import tensorflow as tf
@@ -7,10 +7,10 @@ from model.encoder.rnn import RNNEncoder
 from model.decoder.feedforward import FeedForwardDecoder
 
 
-class RNN(Trainer):
+class EncRNN(Trainer):
     """
-    Maps a Multi-label classification problem into a Recurrent Neural Network,
-    trained with crossentropy on the output labels.
+    Maps a Multi-label classification problem independeny binary classifiers,
+    with an RNN encoding the input sequence.
     """
 
     def __init__(self,
@@ -26,8 +26,7 @@ class RNN(Trainer):
                  save=False,
                  verbose=True):
         """
-        Creates an RNN-based model for MLC. The RNN can be used for encoding,
-        decoding, or both.
+        Creates an RNN-based model for MLC. The RNN is only used for encoding.
 
         Args:
             data_dir (str): path to the folder where datasets are stored
@@ -48,7 +47,8 @@ class RNN(Trainer):
             save (bool): always save the best model (default: False)
             verbose (bool): print messages of progress (default: True)
         """
-        # Encode doc as average of its initial `max_words` word embeddings
+        # Encode doc using an RNN, producing a fixed output (concatenation
+        # of the final outputs from the forward/backwards passes)
         encoder = RNNEncoder(data_dir, hidden_size, max_words, fixed_emb,
                              voc_size)
 
@@ -61,7 +61,7 @@ class RNN(Trainer):
 
         # Generate name
         if not name:
-            name = "rnn_{}_voc-{}_hidden-{}{}"
+            name = "encrnn_{}_voc-{}_hidden-{}{}"
             name = name.format(optimizer, voc_size, hidden_size,
                                "_fixed-emb" if fixed_emb else "")
 

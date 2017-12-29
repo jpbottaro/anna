@@ -36,8 +36,12 @@ class RNNEncoder():
         Returns:
             inputs (list[tf.keras.layers.Input]): list of inputs to be used to
                                                   build the doc embedding
-            embedding (tf.keras.layers.Layer): a layer/tensor with the doc
-                                               embedding
+            fixed_emb (tf.keras.layers.Layer): a layer/tensor with a fixed
+                                               embedding of the input
+            var_emb (tf.keras.layers.Layer): a layer/tensor with an variable
+                                             embedding of the input, decoder
+                                             would need to process it (e.g.
+                                             using attention)
         """
         # (batch, word)
         x1 = tf.keras.layers.Input(shape=(self.max_words,),
@@ -57,17 +61,22 @@ class RNNEncoder():
 
         # Feed input to the RNN, keeping only the last output (both directions
         # are concatenated)
-        # (batch, hidden_size * 2)
-        rnn = tf.keras.layers.GRU(self.hidden_size)
+        # (batch, steps, hidden_size * 2)
+        rnn = tf.keras.layers.GRU(self.hidden_size, return_sequences=True)
         rnn = tf.keras.layers.Bidirectional(rnn)
         x1_out = rnn(x1_emb)
         x2_out = rnn(x2_emb)
 
-        # Concatenate all inputs
-        # (batch, hidden_size * 2 * num_inputs)
-        x = tf.keras.layers.concatenate([x1_out, x2_out])
+        # Fixed embedding using last output of each direction
+        def keep_last(x):
+            return tf.concat([x[:, 0, :], x[:, -1, :]], axis=-1)
+        keeper = tf.keras.layers.Lambda(keep_last)
 
-        return [x1, x2], x
+        # Fixed embedding using last output in each direction of each input
+        # (batch, num_inputs * 2 * hidden_size * 2)
+        x = tf.keras.layers.concatenate([keeper(x1_out), keeper(x2_out)])
+
+        return [x1, x2], x, x2_out
 
     def encode(self, docs):
         """
