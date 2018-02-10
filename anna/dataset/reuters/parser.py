@@ -5,9 +5,9 @@ the sides unbalanced.
 """
 
 import os
-import dataset.utils as utils
+import anna.dataset.utils as utils
+from anna.api.doc import Doc
 from bs4 import BeautifulSoup
-from api.doc import Doc
 from . import fetcher
 
 TEST_DATES = \

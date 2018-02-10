@@ -3,7 +3,7 @@
 Visit: http://www.statmt.org/wmt14/translation-task.html"""
 
 import os
-import dataset.utils as utils
+import anna.dataset.utils as utils
 
 CORPORA = {
     "europarl-parallel.tgz":

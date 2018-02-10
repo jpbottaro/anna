@@ -6,9 +6,9 @@ the sides unbalanced.
 
 import os
 import collections
-from api.doc import Doc
+import anna.dataset.utils as utils
+from anna.api.doc import Doc
 from . import fetcher
-import dataset.utils as utils
 
 
 def fetch_and_parse(data_dir):

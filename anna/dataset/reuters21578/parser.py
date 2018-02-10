@@ -8,9 +8,9 @@ Parses and splits according to:
 """
 
 import os
-import dataset.utils as utils
+import anna.dataset.utils as utils
+from anna.api.doc import Doc
 from bs4 import BeautifulSoup
-from api.doc import Doc
 from . import fetcher
 
 REUTER_SGML = "reut2-{:03}.sgm"

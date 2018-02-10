@@ -2,8 +2,8 @@
 
 import os
 import sys
+import model
 import dataset.reuters21578.parser as data
-from model.mlp import MLP
 
 
 if __name__ == "__main__":
@@ -23,7 +23,7 @@ if __name__ == "__main__":
                 labels.append(l)
 
     # Create MLP with 2 hidden layer
-    model = MLP(data_dir, labels)
+    model = model.MLP(data_dir, labels)
 
     # Train model
     model.train(train_docs, test_docs)

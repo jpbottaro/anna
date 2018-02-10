@@ -4,7 +4,7 @@ Visit: http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_rcv1
 
 import os
 import gzip
-import dataset.utils as utils
+import anna.dataset.utils as utils
 
 HOST = "http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/"
 FILE_URL_FORMAT = HOST + "a12-token-files/{}"

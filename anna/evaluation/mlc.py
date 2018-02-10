@@ -1,8 +1,8 @@
 """Evaluation metrics for Multi-label Classification"""
 
 import copy
-from collections import Counter
 import tensorflow as tf
+from collections import Counter
 
 
 def subset_accuracy(expected, predicted, labels):

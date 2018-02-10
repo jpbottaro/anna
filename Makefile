@@ -1,3 +1,5 @@
+export PYTHONPATH=$(PWD)
+
 venv: .venv/bin/activate
 
 .venv/bin/activate:

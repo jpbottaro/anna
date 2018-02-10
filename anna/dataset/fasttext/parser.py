@@ -4,7 +4,7 @@ Visit: https://fasttext.cc/docs/en/english-vectors.html#format"""
 
 import os
 import numpy as np
-import dataset.utils as utils
+import anna.dataset.utils as utils
 from collections import defaultdict
 from . import fetcher
 

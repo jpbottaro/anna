@@ -2,9 +2,9 @@
 
 import os
 import tensorflow as tf
-from model.trainer import Trainer
-from model.encoder.naive import NaiveEmbeddingEncoder
-from model.decoder.feedforward import FeedForwardDecoder
+from anna.model.trainer import Trainer
+from anna.model.encoder.naive import NaiveEmbeddingEncoder
+from anna.model.decoder.feedforward import FeedForwardDecoder
 
 
 class MLP(Trainer):

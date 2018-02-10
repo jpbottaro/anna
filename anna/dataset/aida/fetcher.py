@@ -5,8 +5,8 @@ Visit: https://www.mpi-inf.mpg.de/departments/databases-and-information-systems/
 import os
 import zipfile
 import subprocess
-import dataset.utils as utils
-import dataset.conll03.fetcher as conll03
+import anna.dataset.utils as utils
+import anna.dataset.conll03.fetcher as conll03
 
 AIDA_NAME = "aida-yago2-dataset"
 AIDA_FILE = AIDA_NAME + ".zip"

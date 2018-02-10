@@ -5,7 +5,7 @@ Visit: https://fasttext.cc/docs/en/english-vectors.html"""
 
 import os
 import zipfile
-import dataset.utils as utils
+import anna.dataset.utils as utils
 
 
 NAME = "wiki-news-300d-1M.vec.zip"

@@ -2,9 +2,9 @@
 
 import os
 import tensorflow as tf
-from model.trainer import Trainer
-from model.encoder.rnn import RNNEncoder
-from model.decoder.feedforward import FeedForwardDecoder
+from anna.model.trainer import Trainer
+from anna.model.encoder.rnn import RNNEncoder
+from anna.model.decoder.feedforward import FeedForwardDecoder
 
 
 class EncRNN(Trainer):

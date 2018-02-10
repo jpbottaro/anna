@@ -6,8 +6,8 @@ import os
 import tarfile
 import shutil
 import subprocess
-import dataset.utils as utils
-import dataset.reuters.fetcher as reuters
+import anna.dataset.utils as utils
+import anna.dataset.reuters.fetcher as reuters
 
 NER_DIR = "ner"
 CONLL_FILE = NER_DIR + ".tgz"

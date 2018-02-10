@@ -4,7 +4,7 @@ Visit: http://www.clips.uantwerpen.be/conll2003/ner"""
 
 import os
 import tarfile
-import dataset.utils as utils
+import anna.dataset.utils as utils
 
 REUTERS_FINAL_DIR = "rcv1"
 REUTERS_FILE = "rcv1.tar.xz"

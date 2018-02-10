@@ -2,8 +2,8 @@
 
 import os
 import tensorflow as tf
-import dataset.utils
-from evaluation.mlc import Evaluator
+import anna.dataset.utils as utils
+from anna.evaluation.mlc import Evaluator
 
 # Use TFOptimizer as keras' cannot handle sparcity in the embedding layer well,
 # which results in big slowdowns. Replace this with stock keras optimizers when
@@ -51,7 +51,7 @@ class Trainer():
         self.model_dir = os.path.join(data_dir, "models")
         self.model_path = os.path.join(self.model_dir, name)
 
-        dataset.utils.create_folder(self.model_dir)
+        utils.create_folder(self.model_dir)
 
         # Optimizer (use TF optimizer as keras' is bad with sparce updates)
         lr = 0.001

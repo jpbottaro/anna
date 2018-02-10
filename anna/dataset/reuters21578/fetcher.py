@@ -5,7 +5,7 @@ Visit: https://archive.ics.uci.edu/ml/datasets/Reuters-21578+Text+Categorization
 
 import os
 import tarfile
-import dataset.utils as utils
+import anna.dataset.utils as utils
 
 NAME = "reuters21578"
 FILE = NAME + ".tar.gz"

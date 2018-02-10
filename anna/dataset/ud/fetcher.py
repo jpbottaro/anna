@@ -3,7 +3,7 @@
 Visit: http://universaldependencies.org"""
 
 import os
-import dataset.utils as utils
+import anna.dataset.utils as utils
 
 UD_URL = "https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11234/"
 

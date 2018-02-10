@@ -3,7 +3,7 @@
 from __future__ import division
 
 import os
-import dataset.utils as utils
+import anna.dataset.utils as utils
 
 # An example url for "es" is: https://dumps.wikimedia.org/eswiki/20160501/
 #                             eswiki-20160501-pages-articles.xml.bz2

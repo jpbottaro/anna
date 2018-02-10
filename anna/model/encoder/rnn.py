@@ -1,8 +1,8 @@
 """Encodes text using an RNN."""
 
-import nlp.utils as nlp
-import dataset.fasttext.parser as embeddings
 import tensorflow as tf
+import anna.nlp.utils as nlp
+import anna.dataset.fasttext.parser as embeddings
 
 
 class RNNEncoder():
