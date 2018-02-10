@@ -95,7 +95,7 @@ class FeedForwardDecoder():
         to feed into the model as the expected output.
 
         Args:
-            labels (list[list[str]]): list of `Doc` to encode as vector
+            labels (list[list[str]]): list of labels to encode as vector
 
         Returns:
             output (list[np.array]): encoded label sets from `labels`
