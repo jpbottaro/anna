@@ -26,7 +26,7 @@ def fetch_and_parse(data_dir, voc_size=None):
     """
     fasttext_dir = fetcher.fetch(data_dir)
 
-    voc, emb = parse(fasttext_dir, voc_size)
+    voc, emb = parse(fasttext_dir)
 
     if voc_size:
         emb = emb[:voc_size]
@@ -36,6 +36,17 @@ def fetch_and_parse(data_dir, voc_size=None):
                 del voc[v]
 
     return voc, emb
+
+
+def one():
+    """
+    Function that returns one (this avoids issues with pickle, which can't
+    handle lambdas).
+
+    Returns:
+        number (int): always 1
+    """
+    return 1
 
 
 @utils.cache(2)
@@ -52,7 +63,7 @@ def parse(fasttext_dir):
     """
     # Reserve 0 for special padding token, 1 for unknown, 2 for end of stream,
     # and default any token not in the vocabulary to unknown
-    voc = defaultdict(lambda: 1)
+    voc = defaultdict(one)
     voc[0] = "_PAD_"
     voc["_PAD_"] = 0
     voc[1] = "_UNK_"
@@ -63,12 +74,10 @@ def parse(fasttext_dir):
     # Reserve first embeddings for special tokens
     emb = [[], [], []]
 
+    first = True
     fasttext_path = os.path.join(fasttext_dir, NAME)
     with open(fasttext_path) as f:
         for line in f:
-            if len(emb) > voc_size:
-                break
-
             # First line contains # words and embedding sizes, skip
             if first:
                 first = False
