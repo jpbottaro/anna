@@ -13,9 +13,8 @@ class RNNDecoder():
     def __init__(self,
                  data_dir,
                  labels,
-                 hidden_size=256,
-                 max_steps=50,
-                 max_output_labels=20):
+                 hidden_size,
+                 max_steps=20):
         """
         Maps a Multi-label classification problem into a series of individual
         label prediction, stopping when reaching a sentinel label.
@@ -25,12 +24,10 @@ class RNNDecoder():
             labels (list[str]): list of possible outputs
             hidden_size (int): size of the hidden units on each hidden layer
             max_steps (int): maximum number of steps the RNN should make
-            max_output_labels (int): maximum number of labels to output
         """
         self.data_dir = data_dir
         self.hidden_size = hidden_size
         self.max_steps = max_steps
-        self.max_output_labels = max_output_labels
         self.special_labels = ["_PAD_", "_UNK_", "_END_"]
         self.id2labels = dict(enumerate(self.special_labels + labels))
         self.labels = {c: i for i, c in self.id2labels.items()}
@@ -54,7 +51,7 @@ class RNNDecoder():
             outputs (tf.keras.layers.Layer): RNN decoder for the label set
         """
         # (batch, max_topics, nr_topics)
-        return RNNDecoderLayer(self.max_output_labels,
+        return RNNDecoderLayer(self.max_steps,
                                len(self.id2labels),
                                self.hidden_size)(fixed_emb)
 
@@ -80,7 +77,7 @@ class RNNDecoder():
         ids = [i + [self.labels["_END_"]] for i in ids]
 
         # Pad to make it a squared matrix
-        maxlen = self.max_output_labels
+        maxlen = self.max_steps
         ids = tf.keras.preprocessing.sequence.pad_sequences(ids,
                                                             maxlen=maxlen,
                                                             padding="post")
@@ -120,8 +117,8 @@ class RNNDecoder():
 
 class RNNDecoderLayer(tf.keras.layers.Layer):
 
-    def __init__(self, max_labels, nr_labels, hidden_size, **kwargs):
-        self.max_labels = max_labels
+    def __init__(self, max_steps, nr_labels, hidden_size, **kwargs):
+        self.max_steps = max_steps
         self.nr_labels = nr_labels
         self.hidden_size = hidden_size
         super(RNNDecoderLayer, self).__init__(**kwargs)
@@ -147,19 +144,19 @@ class RNNDecoderLayer(tf.keras.layers.Layer):
         output = tf.ones([shape[0], self.nr_labels]) / self.nr_labels
         outputs = []
 
-        for i in range(self.max_labels):
+        for i in range(self.max_steps):
             output, state = self.cell(output, state)
             output = tf.matmul(output, self.kernel)
             outputs.append(output)
 
-        # [max_labels, batch_size, nr_labels]
+        # [max_steps, batch_size, nr_labels]
         outputs = tf.stack(outputs)
 
-        # [batch_size, max_labels, nr_labels]
+        # [batch_size, max_steps, nr_labels]
         return tf.transpose(outputs, [1, 0, 2])
 
     def compute_output_shape(self, input_shape):
-        return (input_shape[0], self.max_labels, self.nr_labels)
+        return (input_shape[0], self.max_steps, self.nr_labels)
 
 
 def rnn_loss(y_true, y_pred):

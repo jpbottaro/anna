@@ -1,16 +1,16 @@
-"""Tagging network using a fixed embedding and a decodeding RNNs"""
+"""Encoder-Decoder network using RNNs"""
 
 import os
 import tensorflow as tf
 from anna.model.trainer import Trainer
-from anna.model.encoder.naive import NaiveEmbeddingEncoder
+from anna.model.encoder.rnn import RNNEncoder
 from anna.model.decoder.rnn import RNNDecoder
 
 
-class DecRNN(Trainer):
+class EncDec(Trainer):
     """
-    Maps a Multi-label classification problem into a Recurrent Neural Network,
-    trained with crossentropy on the output labels.
+    Maps a Multi-label classification problem into an Encoder-Decoder network
+    with RNNs (aka seq2seq), trained with crossentropy on the output labels.
     """
 
     def __init__(self,
@@ -48,16 +48,17 @@ class DecRNN(Trainer):
             save (bool): always save the best model (default: False)
             verbose (bool): print messages of progress (default: True)
         """
-        # Encode doc as average of its initial `max_words` word embeddings
-        encoder = NaiveEmbeddingEncoder(data_dir, max_words,
-                                        fixed_emb, voc_size)
+        # Encode doc using an RNN, producing a fixed output (concatenation
+        # of the final outputs from the forward/backwards passes)
+        encoder = RNNEncoder(data_dir, hidden_size, max_words, fixed_emb,
+                             voc_size)
 
         # Classify labels using an RNN decoder
         decoder = RNNDecoder(data_dir, labels, hidden_size)
 
         # Generate name
         if not name:
-            name = "decrnn_{}_voc-{}_hidden-{}{}"
+            name = "encdec_{}_voc-{}_hidden-{}{}"
             name = name.format(optimizer, voc_size, hidden_size,
                                "_fixed-emb" if fixed_emb else "")
 
