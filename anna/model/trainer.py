@@ -168,9 +168,10 @@ class Trainer():
         Args:
             model (tf.keras.models.Model): keras model to modify
         """
-        new_names = []
+        new_names = ['loss']
         new_tensors = []
-        for name, tensor in zip(model.metrics_names, model.metrics_tensors):
+        for name, tensor in zip(model.metrics_names[1:],
+                                model.metrics_tensors):
             if "label_" not in name:
                 new_names.append(name)
                 new_tensors.append(tensor)
