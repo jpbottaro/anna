@@ -33,7 +33,7 @@ class RNNDecoder():
         self.labels = {c: i for i, c in self.id2labels.items()}
         self.loss = rnn_loss
 
-    def build(self, inputs, fixed_emb, var_emb):
+    def build(self, inputs, fixed_emb):
         """
         Builds the RNN decoding layer, as a series of recurrent softmax
         classifiers that find one label at a time.
@@ -42,10 +42,6 @@ class RNNDecoder():
             inputs (list[tf.keras.layers.Input]): list of inputs of the model
             fixed_emb (tf.keras.layers.Layer): a layer/tensor with a fixed
                                                embedding of the input
-            var_emb (tf.keras.layers.Layer): a layer/tensor with an variable
-                                             embedding of the input, decoder
-                                             would need to process it (e.g.
-                                             using attention)
 
         Returns:
             outputs (tf.keras.layers.Layer): RNN decoder for the label set

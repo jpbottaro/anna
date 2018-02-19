@@ -72,8 +72,8 @@ class Trainer():
                                                     custom_objects={"tf": tf})
         else:
             self._log("Building model")
-            inputs, fixed_emb, var_emb = self.encoder.build()
-            outputs = self.decoder.build(inputs, fixed_emb, var_emb)
+            inputs, fixed_emb = self.encoder.build()
+            outputs = self.decoder.build(inputs, fixed_emb)
             self.model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
         # The optimizer isn't Keras, so even loaded models have to be compiled

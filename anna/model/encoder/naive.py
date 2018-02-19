@@ -39,10 +39,6 @@ class NaiveEmbeddingEncoder():
                                                   build the doc embedding
             fixed_emb (tf.keras.layers.Layer): a layer/tensor with a fixed
                                                embedding of the input
-            var_emb (tf.keras.layers.Layer): a layer/tensor with an variable
-                                             embedding of the input, decoder
-                                             would need to process it (e.g.
-                                             using attention)
         """
         # (batch, word)
         x1 = tf.keras.layers.Input(shape=(self.max_words,),
@@ -70,7 +66,7 @@ class NaiveEmbeddingEncoder():
         # (batch, emb * num_inputs)
         x = tf.keras.layers.concatenate([x1_emb, x2_emb])
 
-        return [x1, x2], x, x2_emb
+        return [x1, x2], x
 
     def encode(self, docs):
         """
