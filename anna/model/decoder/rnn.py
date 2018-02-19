@@ -14,7 +14,7 @@ class RNNDecoder():
                  data_dir,
                  labels,
                  hidden_size,
-                 max_steps=20):
+                 max_steps=10):
         """
         Maps a Multi-label classification problem into a series of individual
         label prediction, stopping when reaching a sentinel label.
