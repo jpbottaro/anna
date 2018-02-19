@@ -141,7 +141,7 @@ class RNNDecoderLayer(tf.keras.layers.Layer):
 
         # Initial state and input
         state = tf.matmul(x, self.hidden_projection)
-        output = tf.ones([shape[0], self.nr_labels]) / self.nr_labels
+        output = tf.zeros([shape[0], self.nr_labels])
         outputs = []
 
         for i in range(self.max_steps):
