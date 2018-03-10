@@ -4,7 +4,13 @@ Anna - A Neural Network Analysis
 
 ## Description
 
-A series of experiments using neural nets with tensorflow.
+A series of experiments using neural nets with tensorflow, currently focused on
+multi-label text classification.
+
+## Current Support
+
+It supports LR/FFNs/RNNs, and several of the common datasets for MLC (e.g.
+Reuters-21578/RCV1-v2). See some results in our [notebooks](notebook/text).
 
 ## How to run
 
