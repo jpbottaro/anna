@@ -2,42 +2,42 @@
 
 import os
 import sys
-import anna.dataset.aida.fetcher
-import anna.dataset.ud.fetcher
-import anna.dataset.conll03.fetcher
-import anna.dataset.wmt.fetcher
-import anna.dataset.wiki.fetcher
-import anna.dataset.rcv1.fetcher
-import anna.dataset.reuters21578.fetcher
+import anna.data.dataset.aida
+import anna.data.dataset.ud
+import anna.data.dataset.conll03
+import anna.data.dataset.wmt
+import anna.data.dataset.wiki
+import anna.data.dataset.rcv1
+import anna.data.dataset.reuters21578
 
 options = [
     {
         "name": "Universal Dependencies (Morph, POS Tags)",
-        "fetcher": anna.dataset.ud.fetcher.fetch
+        "fetcher": anna.data.dataset.ud.fetch
     },
     {
         "name": "CoNLL03 (NER)",
-        "fetcher": anna.dataset.conll03.fetcher.fetch
+        "fetcher": anna.data.dataset.conll03.fetch
     },
     {
         "name": "WMT14 (MT)",
-        "fetcher": anna.dataset.wmt.fetcher.fetch
+        "fetcher": anna.data.dataset.wmt.fetch
     },
     {
         "name": "AIDA (Entity Linking)",
-        "fetcher": anna.dataset.aida.fetcher.fetch
+        "fetcher": anna.data.dataset.aida.fetch
     },
     {
         "name": "RCV1 (Multi-label Classification)",
-        "fetcher": anna.dataset.rcv1.fetcher.fetch
+        "fetcher": anna.data.dataset.rcv1.fetch
     },
     {
         "name": "Reuters-21578 (Multi-label Classification)",
-        "fetcher": anna.dataset.reuters21578.fetcher.fetch
+        "fetcher": anna.data.dataset.reuters21578.fetch
     },
     {
         "name": "Wiki",
-        "fetcher": anna.dataset.wiki.fetcher.fetch
+        "fetcher": anna.data.dataset.wiki.fetch
     }
 ]
 

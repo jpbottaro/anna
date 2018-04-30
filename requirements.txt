@@ -1,7 +1,6 @@
-tensorflow==1.5
+tensorflow==1.8
 beautifulsoup4==4.6.0
 matplotlib
 numpy
 pandas
 jupyter
-h5py

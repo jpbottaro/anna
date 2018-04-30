@@ -5,10 +5,23 @@ the sides unbalanced.
 """
 
 import os
-import anna.dataset.utils as utils
-from anna.api.doc import Doc
+import tarfile
+import anna.data.utils as utils
+from anna.data.api import Doc
+from collections import Counter
 from bs4 import BeautifulSoup
-from . import fetcher
+
+NAME = "reuters"
+
+REUTERS_FINAL_DIR = "rcv1"
+REUTERS_FILE = "rcv1.tar.xz"
+REUTERS_TEXT = """To download the Reuters corpus, follow the instructions at:
+
+    http://trec.nist.gov/data/reuters/reuters.html
+
+Once you have the RC1 file, put it at:
+
+    {}"""
 
 TEST_DATES = \
     ["1996{:02}{:02}".format(month, day)
@@ -32,15 +45,16 @@ def fetch_and_parse(data_dir):
         data_dir (str): absolute path to the dir where datasets are stored
 
     Returns:
-        train_docs (list[Doc]): annotated articles for training
-        test_docs (list[Doc]): annotated articles for testing
-        unused_docs (list[Doc]): unused docs acording to the "ModApte" split
+        train_docs (tf.data.Dataset): annotated articles for training
+        test_docs (tf.data.Dataset): annotated articles for testing
+        unused_docs (tf.data.Dataset): unused docs
+        labels (list[str]): final list of labels, from most to least frequent
     """
-    reuters_dir = fetcher.fetch(data_dir)
-    return parse(reuters_dir)
+    reuters_dir = os.path.join(data_dir, NAME)
+
+    return utils.mlc_tfrecords(reuters_dir, lambda: parse(fetch(data_dir)))
 
 
-@utils.cache(3)
 def parse(reuters_dir):
     """
     Parses the RCV1-v2 dataset.
@@ -52,10 +66,12 @@ def parse(reuters_dir):
         train_docs (list[Doc]): annotated articles for training
         test_docs (list[Doc]): annotated articles for testing
         unused_docs (list[Doc]): unused docs
+        labels (list[str]): final list of labels, from most to least frequent
     """
     train_docs = []
     test_docs = []
     unused_docs = []
+    label_counts = Counter()
 
     for date in TEST_DATES:
         date_dir = os.path.join(reuters_dir, date)
@@ -69,9 +85,14 @@ def parse(reuters_dir):
             continue
         for path in os.listdir(date_dir):
             path = os.path.join(date_dir, path)
-            train_docs.append(parse_file(path))
+            doc = parse_file(path)
+            label_counts.extend(doc.labels)
+            train_docs.append(doc)
 
-    return train_docs, test_docs, unused_docs
+    # Get list of labels, from frequent to rare
+    labels = [l[0] for l in label_counts.most_common()]
+
+    return train_docs, test_docs, unused_docs, labels
 
 
 def parse_file(path):
@@ -102,3 +123,33 @@ def parse_file(path):
                 labels.append(str(topic["code"]))
 
         return Doc(title, headline, dateline, text, labels)
+
+
+def fetch(data_dir):
+    """
+    If the Reuters dataset is not available, prints instructions on how to
+    get it. Otherwise, returns the folder with the file.
+
+    Args:
+        data_dir (str): absolute path to the folder where datasets are stored
+
+    Returns:
+        reutersl_dir (str): absolute path to the folder where datasets are stored
+    """
+    # Create folder
+    reuters_dir = os.path.join(data_dir, NAME)
+    utils.create_folder(reuters_dir)
+
+    # Show instructions to fetch the dataset if it's not available
+    reuters_file = os.path.join(reuters_dir, REUTERS_FILE)
+    if not os.path.exists(reuters_file):
+        print(REUTERS_TEXT.format(reuters_file))
+        exit(0)
+
+    # Extract the file
+    final_dir = os.path.join(reuters_dir, REUTERS_FINAL_DIR)
+    if not os.path.exists(final_dir):
+        with tarfile.open(reuters_file) as reuters:
+            reuters.extractall(reuters_dir)
+
+    return final_dir

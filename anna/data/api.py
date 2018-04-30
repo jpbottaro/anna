@@ -12,7 +12,7 @@ class Doc:
             headline (str): doc's headline (could be None)
             dateline (str): doc's title (could be None)
             text (str): doc's text
-            mentions (list[str]): labels attached to the doc
+            labels (list[str]): labels attached to the doc
         """
         self.title = title
         self.headline = headline

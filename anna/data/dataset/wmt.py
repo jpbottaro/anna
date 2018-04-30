@@ -3,7 +3,7 @@
 Visit: http://www.statmt.org/wmt14/translation-task.html"""
 
 import os
-import anna.dataset.utils as utils
+import anna.data.utils as utils
 
 CORPORA = {
     "europarl-parallel.tgz":
@@ -46,7 +46,6 @@ def fetch(data_dir, dest="wmt14"):
     Returns:
         final_dir (str): absolute path where WMT14 datasets were extracted
     """
-
     # Create folder
     wmt_dir = os.path.join(data_dir, dest)
     utils.create_folder(wmt_dir)

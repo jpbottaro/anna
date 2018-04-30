@@ -1,4 +1,4 @@
-from anna.nlp.utils import tokenize
+from anna.data.utils import tokenize
 
 def test_simple():
     assert tokenize("This is text") == \

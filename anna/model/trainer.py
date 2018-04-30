@@ -1,14 +1,8 @@
 """Train Encoder/Decoder models for Multi-label Classification tasks."""
 
 import os
+import numpy as np
 import tensorflow as tf
-import anna.dataset.utils as utils
-from anna.evaluation.mlc import Evaluator
-
-# Use TFOptimizer as keras' cannot handle sparcity in the embedding layer well,
-# which results in big slowdowns. Replace this with stock keras optimizers when
-# this is fixed
-from tensorflow.python.keras._impl.keras.optimizers import TFOptimizer
 
 
 class Trainer():
@@ -21,170 +15,186 @@ class Trainer():
                    result (e.g. feedforward, classifier chains, RNN, etc.)
     """
 
-    def __init__(self, data_dir, labels, name, encoder, decoder,
-                 optimizer, metric, save, verbose=True):
+    def __init__(self,
+                 data_folder,
+                 labels,
+                 encoder,
+                 decoder,
+                 batch_size=32):
         """
-        Maps a Multi-label classification problem into binary classifiers,
-        having one independent classifier for each label. All models share
-        the core embedding layer.
+        Trains Multi-label Classification models.
 
         Args:
             data_dir (str): path to the folder where datasets are stored
-            labels (list[str]): list of possible outputs
-            name (str): name of the model (used when serializing to disk)
-            encoder (Encoder): encoder model to process the input
-            decoder (Decoder): decoder model to process encoded input and
-                               produce the MLC labels
-            optimizer (str): one of: adam, rmsprop, momentum (default: adam)
-            metric (str): metric to optimize (e.g. val_loss, val_ebf1, etc.)
-            save (bool): save the best resulting model
-            verbose (bool): print messages of progress (default: False)
+            labels (list[str]): list of possible labels
+            encoder (Encoder): transforms the input text into numbers
+            decoder (Decoder): takes the encoded input and produces labels
         """
-        self.data_dir = data_dir
-        self.labels = labels
-        self.name = name
-        self.encoder = encoder
-        self.decoder = decoder
-        self.metric = metric
-        self.save = save
-        self.verbose = 1 if verbose else 0
-        self.model_dir = os.path.join(data_dir, "models")
-        self.model_path = os.path.join(self.model_dir, name)
+        self.batch_size = batch_size
+        self.path = os.path.join(data_folder, "model")
+        self.estimator = tf.estimator.Estimator(
+            model_fn=model_fn,
+            model_dir=self.path,
+            params={
+                "encoder": encoder,
+                "decoder": decoder,
+                "label_vocab": labels
+            })
 
-        utils.create_folder(self.model_dir)
-
-        # Optimizer (use TF optimizer as keras' is bad with sparce updates)
-        lr = 0.001
-        if optimizer == "adam":
-            opt = TFOptimizer(tf.train.AdamOptimizer(learning_rate=lr))
-        elif optimizer == "rmsprop":
-            opt = TFOptimizer(tf.train.RMSPropOptimizer(learning_rate=lr))
-        elif optimizer == "momentum":
-            opt = TFOptimizer(tf.train.MomentumOptimizer(learning_rate=lr,
-                                                         momentum=0.9,
-                                                         use_nesterov=True))
-        else:
-            raise ValueError("Unrecognized optimizer: {}".format(optimizer))
-
-        if os.path.isfile(self.model_path):
-            self._log("Loading pretrained model")
-            self.model = tf.keras.models.load_model(self.model_path,
-                                                    custom_objects={"tf": tf})
-        else:
-            self._log("Building model")
-            inputs, fixed_emb = self.encoder.build()
-            outputs = self.decoder.build(inputs, fixed_emb)
-            self.model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
-
-        # The optimizer isn't Keras, so even loaded models have to be compiled
-        self._log("Compiling model")
-        self.model.compile(optimizer=opt, loss=decoder.loss)
-
-        # TODO: Add metric filtering to Keras
-        self._fix_metrics(self.model)
-
-    def train(self, docs, test_docs=None, val_split=0.1, epochs=50):
+    def train(self, docs, test_docs):
         """
-        Trains model with the data in `train_docs`.
+        Train model on `docs`, and run evaluations on `test_docs`.
+
+        The datasets are expected to produce a tuple of:
+            - dict(str -> tf.Tensor): having tokenized `title` and `text`
+            - tf.Tensor: the list of labels as strings
 
         Args:
-            docs (list[Doc]): list of document for training
-            test_docs (list[Doc]): list of document for test evaluation (only
-                                   for reporting, no training decisions are
-                                   made with this set).
-            val_split (float): fraction of `docs` to use for validation
-            epochs (int): number of epochs to run the data for training
-
-        Returns:
-            history (History): keras' history, with record of loss values, etc.
+            docs (tf.data.Dataset): the documents for training
+            test_docs (tf.data.Dataset): the documents for evaluation
         """
-        # Split train and validation docs
-        split = int(len(docs) * (1. - val_split))
-        train_docs = docs[0:split]
-        val_docs = docs[split:]
+        train_spec = tf.estimator.TrainSpec(
+                input_fn=lambda: input_fn(docs,
+                                          batch_size=self.batch_size,
+                                          shuffle=1000))
 
-        # Callbacks for evaluation, early-stopping and learning-rate schedule
-        mode = "min" if "loss" in self.metric else "max"
-        val_eval = Evaluator("val", self.predict, val_docs, self.labels)
-        test_eval = Evaluator("test", self.predict, test_docs, self.labels)
-        stop = tf.keras.callbacks.EarlyStopping(monitor=self.metric,
-                                                patience=20,
-                                                mode=mode,
-                                                verbose=self.verbose)
-        callbacks = [val_eval, test_eval, stop]
+        eval_spec = tf.estimator.EvalSpec(
+                input_fn=lambda: input_fn(test_docs,
+                                          batch_size=self.batch_size))
 
-        # Save best performing model
-        if self.save:
-            saver = tf.keras.callbacks.ModelCheckpoint(self.model_path,
-                                                       monitor=self.metric,
-                                                       save_best_only=True,
-                                                       mode=mode,
-                                                       verbose=self.verbose)
-            callbacks.append(saver)
+        tf.estimator.train_and_evaluate(self.estimator, train_spec, eval_spec)
 
-        # Encode input and train!
-        train_x = self.encoder.encode(train_docs)
-        train_y = self.decoder.encode([d.labels for d in train_docs])
-        val_x = self.encoder.encode(val_docs)
-        val_y = self.decoder.encode([d.labels for d in val_docs])
-        return self.model.fit(train_x, train_y,
-                              epochs=epochs,
-                              validation_data=(val_x, val_y),
-                              callbacks=callbacks)
 
-    def predict(self, docs):
-        """
-        Adds predicted labels in `docs`.
+def input_fn(docs, batch_size=32, shuffle=None, repeat=None):
+    with tf.name_scope("input_processing"):
+        def mask(doc, labels):
+            title_mask = tf.ones_like(doc["title"], dtype=tf.float32)
+            text_mask = tf.ones_like(doc["text"], dtype=tf.float32)
+            doc["title_mask"] = title_mask
+            doc["text_mask"] = text_mask
+            return doc, labels
 
-        Args:
-            docs (list[Doc]): list of document to predict labels for
+        docs = docs.map(mask)
 
-        Returns:
-            analyzed_docs (list[Doc]): same as `docs`, with the predictions
-        """
-        input_data = self.encoder.encode(docs)
-        output_data = self.model.predict(input_data)
-        labels = self.decoder.decode(output_data)
+        if repeat:
+            docs = docs.repeat(repeat)
 
-        for i, doc in enumerate(docs):
-            doc.labels = labels[i]
+        if shuffle:
+            docs = docs.shuffle(buffer_size=shuffle)
 
-        return docs
+        docs = docs.padded_batch(batch_size, padded_shapes=({
+            "title": [None],
+            "title_mask": [None],
+            "text": [None],
+            "text_mask": [None]
+        }, [None]))
 
-    def save(self):
-        """
-        Saves the model in the model directory, with the given `name`.
+        # Return the read end of the pipeline.
+        next_fn = docs.make_one_shot_iterator().get_next()
 
-        Args:
-            name (str): the name for the model
-        """
-        self.model.save(self.model_path)
+    return next_fn
 
-    def _fix_metrics(self, model):
-        """
-        Removes unneded metrics in the model. Very hacky, might be a possible
-        addition to Keras.
 
-        Args:
-            model (tf.keras.models.Model): keras model to modify
-        """
-        new_names = ['loss']
-        new_tensors = []
-        for name, tensor in zip(model.metrics_names[1:],
-                                model.metrics_tensors):
-            if "label_" not in name:
-                new_names.append(name)
-                new_tensors.append(tensor)
-        model.metrics_names = new_names
-        model.metrics_tensors = new_tensors
+def model_fn(features, labels, mode, params):
+    encoder = params["encoder"]
+    decoder = params["decoder"]
+    label_vocab = params["label_vocab"]
 
-    def _log(self, text):
-        """
-        Prints the provided `text`, only if the model was configured as
-        `verbose`.
+    with tf.variable_scope("expected_output"):
+        labels = label_idx_to_hot(labels, label_vocab)
 
-        Args:
-            text (str): the text to print
-        """
-        if self.verbose:
-            print(text)
+    with tf.variable_scope("model"):
+        net = encoder(features, mode)
+        predictions, loss = decoder(net, labels, mode)
+
+    pred = None
+    metrics = None
+    train_op = None
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        loss = None
+        pred = {
+            "class_ids": predictions,
+            "probabilities": probabilities,
+            "logits": logits,
+        }
+    else:
+        metrics = create_metrics(labels, predictions, label_vocab)
+
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            train_op = create_optimizer(loss)
+
+    return tf.estimator.EstimatorSpec(mode,
+                                      loss=loss,
+                                      train_op=train_op,
+                                      eval_metric_ops=metrics,
+                                      predictions=pred)
+
+
+def label_idx_to_hot(labels, vocab):
+    # Convert strings to ids (pads become -1)
+    # (batch, n_positive_labels)
+    labels = tf.contrib.lookup.index_table_from_tensor(
+        mapping=vocab,
+        default_value=-1).lookup(labels)
+
+    # Turn indexes to one-hot vectors (pads become all 0)
+    # (batch, n_positive_labels, n_classes)
+    labels = tf.one_hot(labels, len(vocab), dtype=tf.float32)
+
+    # Turn labels into fixed-sized 1/0 vector
+    # (batch, n_classes)
+    return tf.reduce_sum(labels, 1)
+
+
+def label_hot_to_idx(name, labels, vocab):
+    # Find all positive labels (ignoring which document they come from)
+    idx = tf.cast(tf.where(tf.equal(labels, 1.)), tf.int64)
+    idx = idx[:,1]
+
+    # Fetch string labels for the first document
+    first_idx = tf.cast(tf.where(tf.equal(labels[0], 1.)), tf.int64)
+    names = tf.contrib.lookup.index_to_string_table_from_tensor(
+        vocab,
+        default_value="_UNK_",
+        name="{}_output".format(name)).lookup(first_idx)
+
+    return idx, names
+
+
+def create_metrics(labels, predictions, vocab):
+    with tf.name_scope("metrics"):
+        expected_labels_idx, expected_labels_str = label_hot_to_idx(
+                "expected", labels, vocab)
+        predicted_labels_idx, predicted_labels_str = label_hot_to_idx(
+                "predicted", predictions, vocab)
+
+        n_expected_labels = tf.metrics.mean(tf.reduce_sum(labels, 1))
+        n_predicted_labels = tf.metrics.mean(tf.reduce_sum(predictions, 1))
+        precision = tf.metrics.precision(labels, predictions)
+        recall = tf.metrics.recall(labels, predictions)
+        accuracy = tf.metrics.mean(
+                tf.reduce_all(tf.equal(labels, predictions), 1))
+
+    tf.summary.scalar("n_expected_labels", n_expected_labels[1])
+    tf.summary.scalar("n_predicted_labels", n_predicted_labels[1])
+    tf.summary.scalar("accuracy", accuracy[1])
+    tf.summary.scalar("precision", precision[1])
+    tf.summary.scalar("recall", recall[1])
+    tf.summary.text("expected_labels_examples", expected_labels_str)
+    tf.summary.text("predicted_labels_examples", predicted_labels_str)
+    tf.summary.histogram("expected_labels_dist", expected_labels_idx)
+    tf.summary.histogram("predicted_labels_dist", predicted_labels_idx)
+
+    return {
+        "n_expected_labels": n_expected_labels,
+        "n_predicted_labels": n_predicted_labels,
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+    }
+
+
+def create_optimizer(loss):
+    with tf.name_scope("optimizer"):
+        optimizer = tf.train.AdamOptimizer()
+        return optimizer.minimize(loss, global_step=tf.train.get_global_step())
