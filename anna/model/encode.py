@@ -33,11 +33,13 @@ class Encoder():
         self.oov_buckets = oov_buckets
         self.max_size = max_size
         self.model_dir = model_dir
-        self.metadata_path = self.write_words(model_dir)
 
         if oov_buckets > 0:
             extra_emb = np.random.normal(size=[oov_buckets, emb.shape[1]])
             self.emb = np.concatenate([self.emb, extra_emb])
+
+        oov_names = ["oov_{}".format(i) for i in range(oov_buckets)]
+        self.metadata_path = self.write_words(model_dir, words + oov_names)
 
     def __call__(self, features, mode):
         """
@@ -73,12 +75,13 @@ class Encoder():
             # variable: (batch, sum(input_sizes), emb_size)
             return tf.concat(inputs, 1)
 
-    def write_words(self, model_dir):
+    def write_words(self, model_dir, words):
         """
         Writes the embedding names for later use in tensorboard.
 
         Args:
             model_dir (str): path to the folder where the model will be stored
+            words (list[str]): list of strings as vocabulary
         """
         path = os.path.join(model_dir, "metadata.tsv")
         utils.create_folder(model_dir)
@@ -219,9 +222,8 @@ class EncoderRNN(Encoder):
     def encode(self, x, x_len, name):
         # Run encoding RNN
         # (batch_size, size, rnn_hidden_size)
-        cell = tf.nn.rnn_cell.LSTMCell(256)
+        cell = tf.nn.rnn_cell.LSTMCell(256, name=name + "_rnn")
         outputs, state = tf.nn.dynamic_rnn(cell, x,
-                                           name="{}_rnn".format(name),
                                            sequence_length=x_len,
                                            dtype=tf.float32)
 
