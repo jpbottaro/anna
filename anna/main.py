@@ -17,7 +17,7 @@ if __name__ == "__main__":
     model_dir = os.path.join(data_dir, "model/mlp")
 
     # Fetch pre-trained word embeddings
-    voc, emb = embeddings.fetch_and_parse(data_dir, voc_size=2000)
+    voc, emb = embeddings.fetch_and_parse(data_dir, voc_size=20000)
 
     # Fetch and preprocess dataset
     train_docs, test_docs, unused_docs, labels = data.fetch_and_parse(data_dir)

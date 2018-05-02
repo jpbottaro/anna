@@ -176,20 +176,20 @@ def create_metrics(labels, predictions, vocab):
 
     tf.summary.scalar("out/n_expected_labels", n_expected_labels[1])
     tf.summary.scalar("out/n_predicted_labels", n_predicted_labels[1])
-    tf.summary.scalar("accuracy", accuracy[1])
-    tf.summary.scalar("precision", precision[1])
-    tf.summary.scalar("recall", recall[1])
+    tf.summary.scalar("perf/accuracy", accuracy[1])
+    tf.summary.scalar("perf/precision", precision[1])
+    tf.summary.scalar("perf/recall", recall[1])
     tf.summary.text("out/expected_labels_examples", expected_labels_str)
     tf.summary.text("out/predicted_labels_examples", predicted_labels_str)
     tf.summary.histogram("out/expected_labels_dist", expected_labels_idx)
     tf.summary.histogram("out/predicted_labels_dist", predicted_labels_idx)
 
     return {
-        "n_expected_labels": n_expected_labels,
-        "n_predicted_labels": n_predicted_labels,
-        "accuracy": accuracy,
-        "precision": precision,
-        "recall": recall,
+        "out/n_expected_labels": n_expected_labels,
+        "out/n_predicted_labels": n_predicted_labels,
+        "perf/accuracy": accuracy,
+        "perf/precision": precision,
+        "perf/recall": recall,
     }
 
 
