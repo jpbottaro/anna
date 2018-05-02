@@ -14,6 +14,7 @@ if __name__ == "__main__":
 
     # Resolve data folder
     data_dir = os.path.abspath(sys.argv[1])
+    model_dir = os.path.join(data_dir, "model")
 
     # Fetch pre-trained word embeddings
     voc, emb = embeddings.fetch_and_parse(data_dir, voc_size=2000)
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     train_docs, test_docs, unused_docs, labels = data.fetch_and_parse(data_dir)
 
     # Create trainer for feedforward model
-    model = models.AVGxBR(data_dir, labels, voc, emb)
+    model = models.AVGxBR(model_dir, labels, voc, emb)
 
     # Train model
     model.train(train_docs, test_docs)

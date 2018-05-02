@@ -1,4 +1,7 @@
+import os
 import tensorflow as tf
+import anna.data.utils as utils
+from tensorflow.contrib.tensorboard.plugins import projector
 
 
 class Encoder():
@@ -7,13 +10,15 @@ class Encoder():
     vector representation of them.
     """
 
-    def __init__(self, vocab, emb, input_names=None, max_size=None):
+    def __init__(self, model_dir, words, emb,
+                 input_names=None, max_size=None):
         """
         Creates an encoder with the given embeddings and maximum size
         for the input.
 
         Args:
-            vocab (list[str]): list of strings as vocabulary
+            model_dir (str): path to the folder where the model will be stored
+            words (list[str]): list of strings as vocabulary
             emb (np.array): initialization for the word embeddings
             max_size (int): maximum size to use from the input sequence
         """
@@ -21,9 +26,11 @@ class Encoder():
             input_names = ["title", "text"]
 
         self.input_names = input_names
-        self.vocab = vocab
+        self.words = words
         self.emb = emb
         self.max_size = max_size
+        self.model_dir = model_dir
+        self.metadata_path = self.write_words(model_dir)
 
     def __call__(self, features, mode):
         """
@@ -36,10 +43,10 @@ class Encoder():
         Returns:
             y (tf.Tensor): the final representation of `x`
         """
-        with tf.variable_scope("embeddings", reuse=tf.AUTO_REUSE):
-            emb = tf.get_variable("word_embeddings",
-                                  self.emb.shape,
-                                  initializer=tf.constant_initializer(self.emb))
+        emb = tf.get_variable("word_embeddings",
+                              self.emb.shape,
+                              initializer=tf.constant_initializer(self.emb))
+        self.write_metadata(emb.name)
 
         with tf.name_scope("encoder"):
             # Encode all inputs
@@ -48,7 +55,7 @@ class Encoder():
                 with tf.name_scope("input_" + name):
                     x, x_len = get_input(features,
                                          name,
-                                         self.vocab,
+                                         self.words,
                                          emb,
                                          self.max_size)
                     inputs.append(self.encode(x, x_len, name))
@@ -58,6 +65,34 @@ class Encoder():
             # variable: (batch, sum(input_sizes), emb_size)
             return tf.concat(inputs, 1)
 
+    def write_words(self, model_dir):
+        """
+        Writes the embedding names for later use in tensorboard.
+
+        Args:
+            model_dir (str): path to the folder where the model will be stored
+        """
+        path = os.path.join(model_dir, "metadata.tsv")
+        utils.create_folder(model_dir)
+        with open(path, "w") as f:
+            for name in self.words:
+                print(name, file=f)
+
+        return path
+
+    def write_metadata(self, emb_name):
+        """
+        Points the variable named `emb_name` to the embedding names.
+
+        Args:
+            emb_name (str): name of the tensor with the embeddings
+        """
+        config = projector.ProjectorConfig()
+        embedding = config.embeddings.add()
+        embedding.tensor_name = emb_name
+        embedding.metadata_path = self.metadata_path
+        summary_writer = tf.summary.FileWriter(self.model_dir)
+        projector.visualize_embeddings(summary_writer, config)
 
     def encode(self, x, x_len, name):
         """
@@ -74,7 +109,7 @@ class Encoder():
         raise NotImplementedError
 
 
-def get_input(features, name, vocab, emb, max_size=None):
+def get_input(features, name, words, emb, max_size=None):
     """
     Gets the sequence feature `name` from the `features`,
     trims the size if necessary, and maps it to its list
@@ -83,7 +118,7 @@ def get_input(features, name, vocab, emb, max_size=None):
     Args:
         features (dict): dictionary of input features
         name (str): name of the feature to encode
-        vocab (list[str]): list of strings as vocabulary
+        words (list[str]): list of strings as vocabulary
         emb (tf.Tensor): initialization for the word embeddings
         max_size (int): maximum size to use from the input sequence
 
@@ -110,7 +145,7 @@ def get_input(features, name, vocab, emb, max_size=None):
         # Convert strings to ids
         # (batch, max_size)
         x = tf.contrib.lookup.index_table_from_tensor(
-            mapping=vocab,
+            mapping=words,
             default_value=0).lookup(x)
 
         # Replace with embeddings

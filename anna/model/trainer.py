@@ -16,7 +16,7 @@ class Trainer():
     """
 
     def __init__(self,
-                 data_folder,
+                 model_dir,
                  labels,
                  encoder,
                  decoder,
@@ -25,16 +25,15 @@ class Trainer():
         Trains Multi-label Classification models.
 
         Args:
-            data_dir (str): path to the folder where datasets are stored
+            model_dir (str): path to the folder where the model will be stored
             labels (list[str]): list of possible labels
             encoder (Encoder): transforms the input text into numbers
             decoder (Decoder): takes the encoded input and produces labels
         """
         self.batch_size = batch_size
-        self.path = os.path.join(data_folder, "model")
         self.estimator = tf.estimator.Estimator(
             model_fn=model_fn,
-            model_dir=self.path,
+            model_dir=model_dir,
             params={
                 "encoder": encoder,
                 "decoder": decoder,
@@ -100,10 +99,10 @@ def model_fn(features, labels, mode, params):
     decoder = params["decoder"]
     label_vocab = params["label_vocab"]
 
-    with tf.variable_scope("expected_output"):
+    with tf.name_scope("expected_output"):
         labels = label_idx_to_hot(labels, label_vocab)
 
-    with tf.variable_scope("model"):
+    with tf.name_scope("model"):
         net = encoder(features, mode)
         predictions, loss = decoder(net, labels, mode)
 

@@ -22,12 +22,13 @@ class Decoder():
 
 class DecoderBR(Decoder):
 
-    def __init__(self, n_classes, hidden_units):
+    def __init__(self, model_dir, n_classes, hidden_units):
         """
         Binary Relevance decoder, where each label is an independent
         binary prediction.
 
         Args:
+            model_dir (str): path to the folder where the model will be stored
             n_classes (int): number of classes to predict
             hidden_units (list[int]): size of each layer of the FFNN
         """
