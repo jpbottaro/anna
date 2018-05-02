@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     # Resolve data folder
     data_dir = os.path.abspath(sys.argv[1])
-    model_dir = os.path.join(data_dir, "model")
+    model_dir = os.path.join(data_dir, "model/mlp")
 
     # Fetch pre-trained word embeddings
     voc, emb = embeddings.fetch_and_parse(data_dir, voc_size=2000)

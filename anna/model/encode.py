@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import tensorflow as tf
 import anna.data.utils as utils
 from tensorflow.contrib.tensorboard.plugins import projector
@@ -11,7 +12,7 @@ class Encoder():
     """
 
     def __init__(self, model_dir, words, emb,
-                 input_names=None, max_size=None):
+                 input_names=None, max_size=None, oov_buckets=10000):
         """
         Creates an encoder with the given embeddings and maximum size
         for the input.
@@ -21,16 +22,22 @@ class Encoder():
             words (list[str]): list of strings as vocabulary
             emb (np.array): initialization for the word embeddings
             max_size (int): maximum size to use from the input sequence
+            oov_buckets (int): nr of buckets to use for out-of-vocabulary words
         """
         if not input_names:
             input_names = ["title", "text"]
 
-        self.input_names = input_names
-        self.words = words
         self.emb = emb
+        self.words = words
+        self.input_names = input_names
+        self.oov_buckets = oov_buckets
         self.max_size = max_size
         self.model_dir = model_dir
         self.metadata_path = self.write_words(model_dir)
+
+        if oov_buckets > 0:
+            extra_emb = np.random.normal(size=[oov_buckets, emb.shape[1]])
+            self.emb = np.concatenate([self.emb, extra_emb])
 
     def __call__(self, features, mode):
         """
@@ -57,7 +64,8 @@ class Encoder():
                                          name,
                                          self.words,
                                          emb,
-                                         self.max_size)
+                                         self.max_size,
+                                         self.oov_buckets)
                     inputs.append(self.encode(x, x_len, name))
 
             # Concatenate inputs, two options:
@@ -109,7 +117,7 @@ class Encoder():
         raise NotImplementedError
 
 
-def get_input(features, name, words, emb, max_size=None):
+def get_input(features, name, words, emb, max_size=None, oov_buckets=0):
     """
     Gets the sequence feature `name` from the `features`,
     trims the size if necessary, and maps it to its list
@@ -146,7 +154,8 @@ def get_input(features, name, words, emb, max_size=None):
         # (batch, max_size)
         x = tf.contrib.lookup.index_table_from_tensor(
             mapping=words,
-            default_value=0).lookup(x)
+            default_value=0,
+            num_oov_buckets=oov_buckets).lookup(x)
 
         # Replace with embeddings
         # (batch, max_size, emb_size)
