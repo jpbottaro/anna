@@ -92,7 +92,7 @@ def fetch(data_dir):
     fasttext_zip = os.path.join(fasttext_dir, ZIP_NAME)
     if not os.path.exists(fasttext_file):
         utils.urlretrieve(URL, fasttext_zip)
-        with zipfile.ZipFile(fasttext_file, "r") as fasttext:
+        with zipfile.ZipFile(fasttext_zip, "r") as fasttext:
             fasttext.extractall(fasttext_dir)
 
     return fasttext_dir
