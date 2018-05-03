@@ -8,7 +8,7 @@ class AVGxBR(Trainer):
         super().__init__(model_dir,
                          labels,
                          EncoderAvg(model_dir, words, embeddings, max_size=300),
-                         DecoderBR(model_dir, len(labels), [1024, 512, 512]))
+                         DecoderBR(model_dir, len(labels), [1024, 1024]))
 
 
 class RNNxBR(Trainer):
@@ -16,7 +16,7 @@ class RNNxBR(Trainer):
         super().__init__(model_dir,
                          labels,
                          EncoderRNN(model_dir, words, embeddings, max_size=300),
-                         DecoderBR(model_dir, len(labels), [1024, 512, 512]))
+                         DecoderBR(model_dir, len(labels), [1024, 1024]))
 
 
 class CNNxBR(Trainer):
@@ -24,5 +24,5 @@ class CNNxBR(Trainer):
         super().__init__(model_dir,
                          labels,
                          EncoderCNN(model_dir, words, embeddings),
-                         DecoderBR(model_dir, len(labels), [1024, 512, 512]),
-                         batch_size=8)
+                         DecoderBR(model_dir, len(labels), [1024, 1024]),
+                         batch_size=16)

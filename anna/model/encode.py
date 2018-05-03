@@ -222,11 +222,16 @@ class EncoderRNN(Encoder):
     def encode(self, x, x_len, name):
         # Run encoding RNN
         # (batch_size, size, rnn_hidden_size)
-        cell = tf.nn.rnn_cell.LSTMCell(256, name=name + "_rnn")
-        outputs, state = tf.nn.dynamic_rnn(cell, x,
-                                           sequence_length=x_len,
-                                           dtype=tf.float32)
+        x_len = tf.cast(x_len, tf.int32)
+        cell_fw = tf.nn.rnn_cell.GRUCell(1024, name=name + "_rnn_fw")
+        cell_bw = tf.nn.rnn_cell.GRUCell(1024, name=name + "_rnn_bw")
+        outputs, states = tf.nn.bidirectional_dynamic_rnn(cell_fw,
+                                                          cell_bw,
+                                                          x,
+                                                          sequence_length=x_len,
+                                                          dtype=tf.float32)
 
-        # Take last rnn output
-        # (batch, rnn_hidden_size)
-        return state.h
+        # Concatenate last outputs of each direction
+        # (batch, rnn_hidden_size * 2)
+        state_fw, state_bw = states
+        return tf.concat([state_fw, state_bw], 1)

@@ -55,7 +55,7 @@ class Trainer():
         train_spec = tf.estimator.TrainSpec(
                 input_fn=lambda: input_fn(docs,
                                           batch_size=self.batch_size,
-                                          shuffle=1000))
+                                          shuffle=10000))
 
         eval_spec = tf.estimator.EvalSpec(
                 input_fn=lambda: input_fn(test_docs,
