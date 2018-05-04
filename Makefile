@@ -16,6 +16,10 @@ test: venv
 run: venv
 	@.venv/bin/python anna/main.py data
 
+tb: venv
+	@. .venv/bin/activate && \
+		tensorboard --logdir ~/data/model
+
 notebook: venv
 	@. .venv/bin/activate && jupyter notebook --notebook-dir=notebook
 
