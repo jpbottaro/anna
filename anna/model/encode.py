@@ -157,7 +157,7 @@ def get_input(features, name, words, emb, max_size=None, oov_buckets=0):
         # (batch, max_size)
         x = tf.contrib.lookup.index_table_from_tensor(
             mapping=words,
-            default_value=0,
+            default_value=1,
             num_oov_buckets=oov_buckets).lookup(x)
 
         # Replace with embeddings
