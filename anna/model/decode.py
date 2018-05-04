@@ -56,10 +56,13 @@ class DecoderBR(Decoder):
 
         # Compute loss.
         with tf.name_scope("loss"):
-            # Binary cross-entropy loss, allowing instances to have multiple labels
-            loss = tf.reduce_sum(
-                    tf.nn.weighted_cross_entropy_with_logits(targets=labels,
-                                                             logits=logits,
-                                                             pos_weight=1.))
+            # Binary cross-entropy loss, allowing multiple labels per instance
+            # (batch, n_classes)
+            loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,
+                                                           logits=logits)
+
+            # Average loss for all batches/classes
+            # scalar
+            loss = tf.reduce_mean(loss)
 
         return predictions, loss
