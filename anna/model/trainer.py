@@ -1,11 +1,10 @@
 """Train Encoder/Decoder models for Multi-label Classification tasks."""
 
 import os
-import numpy as np
 import tensorflow as tf
 
 
-class Trainer():
+class Trainer:
     """
     Trains Multi-label Classification models. Generalizes most common models
     using:
@@ -61,6 +60,7 @@ class Trainer():
                                        shuffle=10000)
         val_input = lambda: input_fn(docs.take(val_size),
                                      batch_size=self.batch_size)
+        test_input = None
         if test_docs:
             test_input = lambda: input_fn(test_docs,
                                           batch_size=self.batch_size)
@@ -94,12 +94,13 @@ def input_fn(docs, batch_size=32, shuffle=None, repeat=None):
         if shuffle:
             docs = docs.shuffle(buffer_size=shuffle)
 
-        docs = docs.padded_batch(batch_size, padded_shapes=({
-            "title": [None],
-            "title_mask": [None],
-            "text": [None],
-            "text_mask": [None]
-        }, [None]))
+        pads = ({
+                    "title": [None],
+                    "title_mask": [None],
+                    "text": [None],
+                    "text_mask": [None]
+                }, [None])
+        docs = docs.padded_batch(batch_size, padded_shapes=pads)
 
         return docs.make_one_shot_iterator().get_next()
 
@@ -152,7 +153,7 @@ def label_idx_to_hot(labels, vocab):
 def label_hot_to_idx(name, labels, vocab):
     # Find all positive labels (ignoring which document they come from)
     idx = tf.cast(tf.where(tf.equal(labels, 1.)), tf.int64)
-    idx = idx[:,1]
+    idx = idx[:, 1]
 
     # Fetch string labels for the first document
     first_idx = tf.cast(tf.where(tf.equal(labels[0], 1.)), tf.int64)
@@ -167,16 +168,16 @@ def label_hot_to_idx(name, labels, vocab):
 def create_metrics(labels, predictions, vocab):
     with tf.name_scope("metrics"):
         expected_labels_idx, expected_labels_str = label_hot_to_idx(
-                "expected", labels, vocab)
+            "expected", labels, vocab)
         predicted_labels_idx, predicted_labels_str = label_hot_to_idx(
-                "predicted", predictions, vocab)
+            "predicted", predictions, vocab)
 
         n_expected_labels = tf.metrics.mean(tf.reduce_sum(labels, 1))
         n_predicted_labels = tf.metrics.mean(tf.reduce_sum(predictions, 1))
         precision = tf.metrics.precision(labels, predictions)
         recall = tf.metrics.recall(labels, predictions)
         accuracy = tf.metrics.mean(
-                tf.reduce_all(tf.equal(labels, predictions), 1))
+            tf.reduce_all(tf.equal(labels, predictions), 1))
 
     tf.summary.scalar("out/n_expected_labels", n_expected_labels[1])
     tf.summary.scalar("out/n_predicted_labels", n_predicted_labels[1])
@@ -200,7 +201,7 @@ def create_metrics(labels, predictions, vocab):
 def print_metrics(name, metrics):
     print("\t{}\tloss: {:.6f}".format(name, metrics["loss"]))
     print("\t\t" + "\t".join(["{}: {:.4f}".format(k[5:], v)
-        for k, v in metrics.items() if "perf" in k]))
+                              for k, v in metrics.items() if "perf" in k]))
 
 
 def create_optimizer(loss):

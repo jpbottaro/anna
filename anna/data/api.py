@@ -8,9 +8,9 @@ class Doc:
         """Create a document
 
         Args:
-            title (str): doc's title
-            headline (str): doc's headline (could be None)
-            dateline (str): doc's title (could be None)
+            title (str, optional): doc's title
+            headline (str, optional): doc's headline (could be None)
+            dateline (str, optional): doc's title (could be None)
             text (str): doc's text
             labels (list[str]): labels attached to the doc
         """

@@ -86,7 +86,7 @@ def parse(reuters_dir):
         for path in os.listdir(date_dir):
             path = os.path.join(date_dir, path)
             doc = parse_file(path)
-            label_counts.extend(doc.labels)
+            label_counts.update(doc.labels)
             train_docs.append(doc)
 
     # Get list of labels, from frequent to rare

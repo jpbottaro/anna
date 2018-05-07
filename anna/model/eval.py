@@ -1,7 +1,6 @@
 """Evaluation metrics for Multi-label Classification"""
 
 import copy
-import tensorflow as tf
 from collections import Counter
 
 

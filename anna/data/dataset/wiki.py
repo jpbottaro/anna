@@ -1,7 +1,5 @@
 """Fetches mediawiki dumps."""
 
-from __future__ import division
-
 import os
 import anna.data.utils as utils
 

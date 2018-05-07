@@ -4,12 +4,11 @@ Important: Train and test sets are _switched_, since the original split leaves
 the sides unbalanced.
 
 Visit: http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_rcv1v2_README.htm"""  # noqa
-
 import os
+import gzip
 import collections
 import anna.data.utils as utils
 from anna.data.api import Doc
-from collections import Counter
 
 NAME = "rcv1-v2"
 
@@ -67,7 +66,7 @@ def parse(rcv1_dir):
     train_docs = []
     test_docs = []
     unused_docs = []
-    label_counts = Counter()
+    label_counts = collections.Counter()
 
     topics = collections.defaultdict(set)
     topics_path = os.path.join(rcv1_dir, TOPICS_FINAL)

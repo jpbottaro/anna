@@ -1,11 +1,9 @@
-import os
 import numpy as np
 import tensorflow as tf
-import anna.data.utils as utils
 import anna.data.dataset.fasttext as embeddings
 
 
-class Encoder():
+class Encoder:
     """
     Encoder that takes the input features, and produces a
     vector representation of them.
@@ -105,6 +103,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
         words (list[str]): list of strings as vocabulary
         emb (tf.Tensor): initialization for the word embeddings
         input_limit (int): maximum size to use from the input sequence
+        oov_buckets (int): nr of buckets to use for out-of-vocabulary words
 
     Returns:
         x (tf.Tensor): the tensor of embeddings for the feature `name`
@@ -117,8 +116,8 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
     # (batch, input_limit)
     if input_limit:
         with tf.name_scope("trim"):
-            x = x[:,:input_limit]
-            x_mask = x_mask[:,:input_limit]
+            x = x[:, :input_limit]
+            x_mask = x_mask[:, :input_limit]
 
     # Length of each sequence
     # (batch)

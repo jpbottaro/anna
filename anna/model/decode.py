@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class Decoder():
+class Decoder:
     """
     Takes the output of an `Encoder`, and produces the final list
     of predictions.
@@ -36,16 +36,16 @@ class DecoderBR(Decoder):
         self.hidden_units = hidden_units
 
     def __call__(self, net, labels, mode):
+        is_training = mode == tf.estimator.ModeKeys.TRAIN
+
         with tf.name_scope("decoder"):
             # Add all layers of the MLP
             for i, units in enumerate(self.hidden_units):
-                net = tf.layers.dropout(net,
-                        training=mode == tf.estimator.ModeKeys.TRAIN)
+                net = tf.layers.dropout(net, training=is_training)
                 net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
 
             # Compute logits (1 per class)
-            net = tf.layers.dropout(net,
-                    training=mode == tf.estimator.ModeKeys.TRAIN)
+            net = tf.layers.dropout(net, training=is_training)
             logits = tf.layers.dense(net, self.n_classes, activation=None)
 
             # Compute predictions as independent confidences

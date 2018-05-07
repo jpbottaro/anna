@@ -67,6 +67,7 @@ def parse(reuters_dir):
         with open(path, encoding="latin1") as fp:
             soup = BeautifulSoup(fp, "html5lib")
             for article in soup.find_all("reuters"):
+                text = None
                 title = article.find("title")
                 if title:
                     text = str(title.find_next_sibling(string=True))

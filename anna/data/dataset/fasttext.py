@@ -6,7 +6,6 @@ import os
 import zipfile
 import numpy as np
 import anna.data.utils as utils
-from collections import defaultdict
 
 DESTINATION = "fasttext"
 NAME = "wiki-news-300d-1M-subword.vec"
@@ -35,7 +34,7 @@ def parse(fasttext_dir, voc_size):
     Parses the fasttext word embeddings.
 
     Args:
-        fastext_dir (str): absolute path to the extracted word embeddings
+        fasttext_dir (str): absolute path to the extracted word embeddings
         voc_size (int): maximum size of the vocabulary, None for no limit
 
     Returns:

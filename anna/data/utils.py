@@ -6,7 +6,6 @@ import sys
 import pickle
 import random
 import urllib.request
-import numpy as np
 import tensorflow as tf
 
 TRAIN_PATH = "train.tfrecords"
@@ -109,8 +108,8 @@ def make_example(title, text, labels):
     Serializes a doc into a TFRecord example.
 
     Args:
-        title (str): title of the example
-        text (str): text of the example
+        title (list[str]): title of the example
+        text (list[str]): text of the example
         labels (list[str]): the list of expected labels for the example
 
     Returns:
