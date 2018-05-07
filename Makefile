@@ -14,11 +14,11 @@ test: venv
 	@.venv/bin/python setup.py test
 
 run: venv
-	@.venv/bin/python anna/main.py data
+	@TF_CPP_MIN_LOG_LEVEL=3 .venv/bin/python anna/main.py data
 
 tb: venv
 	@. .venv/bin/activate && \
-		tensorboard --logdir data/model
+		TF_CPP_MIN_LOG_LEVEL=3 tensorboard --logdir data/model
 
 notebook: venv
 	@. .venv/bin/activate && jupyter notebook --notebook-dir=notebook
