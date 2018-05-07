@@ -61,7 +61,8 @@ class Trainer():
 
         eval_spec = tf.estimator.EvalSpec(
                 input_fn=lambda: input_fn(test_docs,
-                                          batch_size=self.batch_size))
+                                          batch_size=self.batch_size),
+                steps=None)
 
         tf.estimator.train_and_evaluate(self.estimator, train_spec, eval_spec)
 
@@ -108,22 +109,12 @@ def model_fn(features, labels, mode, params):
         net = encoder(features, mode)
         predictions, loss = decoder(net, labels, mode)
 
-    pred = None
-    metrics = None
     train_op = None
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        loss = None
-        pred = {
-            "class_ids": predictions,
-            "probabilities": probabilities,
-            "logits": logits,
-        }
-    else:
-        metrics = create_metrics(labels, predictions, label_vocab)
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        train_op = create_optimizer(loss)
 
-        if mode == tf.estimator.ModeKeys.TRAIN:
-            train_op = create_optimizer(loss)
-
+    pred = {"predictions": predictions}
+    metrics = create_metrics(labels, predictions, label_vocab)
     return tf.estimator.EstimatorSpec(mode,
                                       loss=loss,
                                       train_op=train_op,
