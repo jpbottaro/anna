@@ -139,7 +139,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
 
         # Clear embeddings for pads
         # (batch, input_limit, emb_size)
-        x = tf.multiply(x, tf.expand_dims(x_mask, -1))
+        x = tf.multiply(x, x_mask[:, :, tf.newaxis])
 
     return x, x_len
 
@@ -152,9 +152,19 @@ class EncoderAvg(Encoder):
     def encode(self, x, x_len, name):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
-        l = tf.expand_dims(x_len, -1)
-        ones = tf.ones_like(l)
-        return tf.reduce_sum(x, 1) / tf.where(tf.less(l, 1e-7), ones, l)
+        x_len = x_len[:, tf.newaxis]
+        return tf.reduce_sum(x, 1) / tf.maximum(x_len, tf.ones_like(x_len))
+
+
+class EncoderMax(Encoder):
+    """
+    Encodes the input taking the max of each of its word embedding dimentions.
+    """
+
+    def encode(self, x, x_len, name):
+        # Average embeddings, avoiding zero division when the input is empty
+        # (batch, emb_size)
+        return tf.reduce_max(x, 1)
 
 
 class EncoderCNN(Encoder):
@@ -186,25 +196,58 @@ class EncoderCNN(Encoder):
         return tf.concat(pools, 1)
 
 
-class EncoderRNN(Encoder):
+class EncoderRNNLast(Encoder):
     """
     Encodes the input using a bidirectional GRU, returning the output
     from the last RNN steps concatenated.
     """
 
     def encode(self, x, x_len, name):
-        # Run encoding RNN
-        # (batch_size, size, rnn_hidden_size)
-        x_len = tf.cast(x_len, tf.int32)
+        seq_len = tf.cast(x_len, tf.int32)
         c_fw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_fw", reuse=tf.AUTO_REUSE)
         c_bw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_bw", reuse=tf.AUTO_REUSE)
-        outputs, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
-                                                          c_bw,
-                                                          x,
-                                                          sequence_length=x_len,
-                                                          dtype=tf.float32)
+
+        # Run encoding RNN
+        # states: 2 x (batch_size, rnn_hidden_size)
+        _, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
+                                                    c_bw,
+                                                    x,
+                                                    sequence_length=seq_len,
+                                                    dtype=tf.float32)
 
         # Concatenate last outputs of each direction
         # (batch, rnn_hidden_size * 2)
-        state_fw, state_bw = states
-        return tf.concat([state_fw, state_bw], 1)
+        return tf.concat(states, 1)
+
+
+class EncoderRNNAvg(Encoder):
+    """
+    Encodes the input using a bidirectional GRU, returning the
+    average output value in both directions.
+    """
+
+    def encode(self, x, x_len, name):
+        seq_len = tf.cast(x_len, tf.int32)
+        c_fw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_fw", reuse=tf.AUTO_REUSE)
+        c_bw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_bw", reuse=tf.AUTO_REUSE)
+
+        # Run encoding RNN
+        # output: 2 x (batch_size, size, rnn_hidden_size)
+        outputs, _ = tf.nn.bidirectional_dynamic_rnn(c_fw,
+                                                     c_bw,
+                                                     x,
+                                                     sequence_length=seq_len,
+                                                     dtype=tf.float32)
+
+        # Avoid zero division
+        # (batch, 1)
+        x_len = tf.maximum(x_len, tf.ones_like(x_len))
+        x_len = x_len[:, tf.newaxis]
+
+        # Concatenate forward and backward passes
+        # (batch_size, size, 2 * rnn_hidden_size)
+        outputs = tf.concat(outputs, 2)
+
+        # Average all hidden vectors
+        # (batch_size, rnn_hidden_size)
+        return tf.reduce_sum(outputs, 1) / x_len

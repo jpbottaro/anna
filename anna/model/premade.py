@@ -12,13 +12,31 @@ class AVGxBR(Trainer):
                          name="avg_br")
 
 
-class RNNxBR(Trainer):
+class MAXxBR(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
-                         EncoderRNN(data_dir, input_limit=300),
+                         EncoderMax(data_dir, input_limit=300),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
-                         name="rnn_br")
+                         name="max_br")
+
+
+class RNNlastxBR(Trainer):
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
+                         labels,
+                         EncoderRNNLast(data_dir, input_limit=300),
+                         DecoderBR(data_dir, len(labels), [1024, 1024]),
+                         name="rnn_last_br")
+
+
+class RNNavgxBR(Trainer):
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
+                         labels,
+                         EncoderRNNAvg(data_dir, input_limit=300),
+                         DecoderBR(data_dir, len(labels), [1024, 1024]),
+                         name="rnn_avg_br")
 
 
 class CNNxBR(Trainer):
