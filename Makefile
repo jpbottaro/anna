@@ -18,7 +18,7 @@ run: venv
 
 tb: venv
 	@. .venv/bin/activate && \
-		tensorboard --logdir ~/data/model
+		tensorboard --logdir data/model
 
 notebook: venv
 	@. .venv/bin/activate && jupyter notebook --notebook-dir=notebook
