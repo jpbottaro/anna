@@ -188,18 +188,18 @@ class EncoderCNN(Encoder):
 
 class EncoderRNN(Encoder):
     """
-    Encodes the input using a simple LSTM, returning the output
-    from the last RNN step.
+    Encodes the input using a bidirectional GRU, returning the output
+    from the last RNN steps concatenated.
     """
 
     def encode(self, x, x_len, name):
         # Run encoding RNN
         # (batch_size, size, rnn_hidden_size)
         x_len = tf.cast(x_len, tf.int32)
-        cell_fw = tf.nn.rnn_cell.GRUCell(1024, name=name + "_rnn_fw")
-        cell_bw = tf.nn.rnn_cell.GRUCell(1024, name=name + "_rnn_bw")
-        outputs, states = tf.nn.bidirectional_dynamic_rnn(cell_fw,
-                                                          cell_bw,
+        c_fw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_fw", reuse=tf.AUTO_REUSE)
+        c_bw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_bw", reuse=tf.AUTO_REUSE)
+        outputs, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
+                                                          c_bw,
                                                           x,
                                                           sequence_length=x_len,
                                                           dtype=tf.float32)
