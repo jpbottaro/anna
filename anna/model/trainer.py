@@ -42,7 +42,7 @@ class Trainer():
                 "label_vocab": labels
             })
 
-    def train(self, docs, test_docs):
+    def train(self, docs, test_docs=None, val_size=500, epochs=50):
         """
         Train model on `docs`, and run evaluations on `test_docs`.
 
@@ -53,18 +53,28 @@ class Trainer():
         Args:
             docs (tf.data.Dataset): the documents for training
             test_docs (tf.data.Dataset): the documents for evaluation
+            val_size (int): size of the validation set, in nr of docs
+            epochs (int): max number of epochs to run
         """
-        train_spec = tf.estimator.TrainSpec(
-                input_fn=lambda: input_fn(docs,
-                                          batch_size=self.batch_size,
-                                          shuffle=10000))
+        train_input = lambda: input_fn(docs.skip(val_size),
+                                       batch_size=self.batch_size,
+                                       shuffle=10000)
+        val_input = lambda: input_fn(docs.take(val_size),
+                                     batch_size=self.batch_size)
+        if test_docs:
+            test_input = lambda: input_fn(test_docs,
+                                          batch_size=self.batch_size)
 
-        eval_spec = tf.estimator.EvalSpec(
-                input_fn=lambda: input_fn(test_docs,
-                                          batch_size=self.batch_size),
-                steps=None)
-
-        tf.estimator.train_and_evaluate(self.estimator, train_spec, eval_spec)
+        i = 0
+        while i < epochs:
+            print("Starting epoch #{}".format(i))
+            self.estimator.train(input_fn=train_input)
+            val_m = self.estimator.evaluate(val_input, name="val")
+            print_metrics("val", val_m)
+            if test_input:
+                test_m = self.estimator.evaluate(test_input, name="test")
+                print_metrics("test", test_m)
+            i += 1
 
 
 def input_fn(docs, batch_size=32, shuffle=None, repeat=None):
@@ -91,10 +101,7 @@ def input_fn(docs, batch_size=32, shuffle=None, repeat=None):
             "text_mask": [None]
         }, [None]))
 
-        # Return the read end of the pipeline.
-        next_fn = docs.make_one_shot_iterator().get_next()
-
-    return next_fn
+        return docs.make_one_shot_iterator().get_next()
 
 
 def model_fn(features, labels, mode, params):
@@ -188,6 +195,12 @@ def create_metrics(labels, predictions, vocab):
         "perf/precision": precision,
         "perf/recall": recall,
     }
+
+
+def print_metrics(name, metrics):
+    print("\t{}\tloss: {:.6f}".format(name, metrics["loss"]))
+    print("\t\t" + "\t".join(["{}: {:.4f}".format(k[5:], v)
+        for k, v in metrics.items() if "perf" in k]))
 
 
 def create_optimizer(loss):
