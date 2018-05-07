@@ -12,18 +12,14 @@ if __name__ == "__main__":
         print("Usage: main.py DATA_FOLDER")
         exit(1)
 
-    # Resolve data folder
+    # Resolve data folders
     data_dir = os.path.abspath(sys.argv[1])
-    model_dir = os.path.join(data_dir, "model/mlp")
-
-    # Fetch pre-trained word embeddings
-    voc, emb = embeddings.fetch_and_parse(data_dir, voc_size=20000)
 
     # Fetch and preprocess dataset
     train_docs, test_docs, unused_docs, labels = data.fetch_and_parse(data_dir)
 
     # Create trainer for feedforward model
-    model = models.AVGxBR(model_dir, labels, voc, emb)
+    model = models.AVGxBR(data_dir, labels)
 
     # Train model
     model.train(train_docs, test_docs)

@@ -16,20 +16,22 @@ class Trainer():
     """
 
     def __init__(self,
-                 model_dir,
+                 data_dir,
                  labels,
                  encoder,
                  decoder,
+                 name="unnamed",
                  batch_size=32):
         """
         Trains Multi-label Classification models.
 
         Args:
-            model_dir (str): path to the folder where the model will be stored
+            data_dir (str): path to the data folder
             labels (list[str]): list of possible labels
             encoder (Encoder): transforms the input text into numbers
             decoder (Decoder): takes the encoded input and produces labels
         """
+        model_dir = os.path.join(data_dir, "model", name)
         self.batch_size = batch_size
         self.estimator = tf.estimator.Estimator(
             model_fn=model_fn,

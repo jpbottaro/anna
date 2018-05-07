@@ -4,25 +4,28 @@ from anna.model.decode import *
 
 
 class AVGxBR(Trainer):
-    def __init__(self, model_dir, labels, words, embeddings):
-        super().__init__(model_dir,
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
                          labels,
-                         EncoderAvg(model_dir, words, embeddings, max_size=300),
-                         DecoderBR(model_dir, len(labels), [1024, 1024]))
+                         EncoderAvg(data_dir, input_limit=300),
+                         DecoderBR(data_dir, len(labels), [1024, 1024]),
+                         name="avg_br")
 
 
 class RNNxBR(Trainer):
-    def __init__(self, model_dir, labels, words, embeddings):
-        super().__init__(model_dir,
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
                          labels,
-                         EncoderRNN(model_dir, words, embeddings, max_size=300),
-                         DecoderBR(model_dir, len(labels), [1024, 1024]))
+                         EncoderRNN(data_dir, input_limit=300),
+                         DecoderBR(data_dir, len(labels), [1024, 1024]),
+                         name="rnn_br")
 
 
 class CNNxBR(Trainer):
-    def __init__(self, model_dir, labels, words, embeddings):
-        super().__init__(model_dir,
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
                          labels,
-                         EncoderCNN(model_dir, words, embeddings),
-                         DecoderBR(model_dir, len(labels), [1024, 1024]),
+                         EncoderCNN(data_dir),
+                         DecoderBR(data_dir, len(labels), [1024, 1024]),
+                         name="cnn_br",
                          batch_size=16)

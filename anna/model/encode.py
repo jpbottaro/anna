@@ -2,7 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import anna.data.utils as utils
-from tensorflow.contrib.tensorboard.plugins import projector
+import anna.data.dataset.fasttext as embeddings
 
 
 class Encoder():
@@ -11,35 +11,39 @@ class Encoder():
     vector representation of them.
     """
 
-    def __init__(self, model_dir, words, emb,
-                 input_names=None, max_size=None, oov_buckets=10000):
+    def __init__(self,
+                 data_dir,
+                 input_names=None,
+                 input_limit=None,
+                 emb_size=20000,
+                 oov_buckets=10000):
         """
         Creates an encoder with the given embeddings and maximum size
         for the input.
 
         Args:
-            model_dir (str): path to the folder where the model will be stored
-            words (list[str]): list of strings as vocabulary
-            emb (np.array): initialization for the word embeddings
-            max_size (int): maximum size to use from the input sequence
+            data_dir (str): path to the data folder
+            input_names (list[str]): names of the string inputs to encode
+            input_limit (int): maximum size to use from the input sequence
+            emb_size (int): nr of embeddings to store (i.e. size of vocabulary)
             oov_buckets (int): nr of buckets to use for out-of-vocabulary words
         """
         if not input_names:
             input_names = ["title", "text"]
 
-        self.emb = emb
-        self.words = words
+        self.data_dir = data_dir
         self.input_names = input_names
+        self.input_limit = input_limit
         self.oov_buckets = oov_buckets
-        self.max_size = max_size
-        self.model_dir = model_dir
+
+        # Fetch pre-trained word embeddings
+        self.words, self.emb = embeddings.fetch_and_parse(data_dir,
+                                                          voc_size=emb_size)
 
         if oov_buckets > 0:
-            extra_emb = np.random.normal(size=[oov_buckets, emb.shape[1]])
+            extra_emb = np.random.uniform(-1, 1, size=[oov_buckets,
+                                                       self.emb.shape[1]])
             self.emb = np.concatenate([self.emb, extra_emb])
-
-        oov_names = ["oov_{}".format(i) for i in range(oov_buckets)]
-        self.metadata_path = self.write_words(model_dir, words + oov_names)
 
     def __call__(self, features, mode):
         """
@@ -55,7 +59,6 @@ class Encoder():
         emb = tf.get_variable("word_embeddings",
                               self.emb.shape,
                               initializer=tf.constant_initializer(self.emb))
-        self.write_metadata(emb.name)
 
         with tf.name_scope("encoder"):
             # Encode all inputs
@@ -66,7 +69,7 @@ class Encoder():
                                          name,
                                          self.words,
                                          emb,
-                                         self.max_size,
+                                         self.input_limit,
                                          self.oov_buckets)
                     inputs.append(self.encode(x, x_len, name))
 
@@ -74,36 +77,6 @@ class Encoder():
             # fixed: (batch, len(input_names) * emb_size)
             # variable: (batch, sum(input_sizes), emb_size)
             return tf.concat(inputs, 1)
-
-    def write_words(self, model_dir, words):
-        """
-        Writes the embedding names for later use in tensorboard.
-
-        Args:
-            model_dir (str): path to the folder where the model will be stored
-            words (list[str]): list of strings as vocabulary
-        """
-        path = os.path.join(model_dir, "metadata.tsv")
-        utils.create_folder(model_dir)
-        with open(path, "w") as f:
-            for name in self.words:
-                print(name, file=f)
-
-        return path
-
-    def write_metadata(self, emb_name):
-        """
-        Points the variable named `emb_name` to the embedding names.
-
-        Args:
-            emb_name (str): name of the tensor with the embeddings
-        """
-        config = projector.ProjectorConfig()
-        embedding = config.embeddings.add()
-        embedding.tensor_name = emb_name
-        embedding.metadata_path = self.metadata_path
-        summary_writer = tf.summary.FileWriter(self.model_dir)
-        projector.visualize_embeddings(summary_writer, config)
 
     def encode(self, x, x_len, name):
         """
@@ -120,7 +93,7 @@ class Encoder():
         raise NotImplementedError
 
 
-def get_input(features, name, words, emb, max_size=None, oov_buckets=0):
+def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
     """
     Gets the sequence feature `name` from the `features`,
     trims the size if necessary, and maps it to its list
@@ -131,7 +104,7 @@ def get_input(features, name, words, emb, max_size=None, oov_buckets=0):
         name (str): name of the feature to encode
         words (list[str]): list of strings as vocabulary
         emb (tf.Tensor): initialization for the word embeddings
-        max_size (int): maximum size to use from the input sequence
+        input_limit (int): maximum size to use from the input sequence
 
     Returns:
         x (tf.Tensor): the tensor of embeddings for the feature `name`
@@ -141,11 +114,11 @@ def get_input(features, name, words, emb, max_size=None, oov_buckets=0):
     x_mask = features[name + "_mask"]
 
     # Limit size
-    # (batch, max_size)
-    if max_size:
+    # (batch, input_limit)
+    if input_limit:
         with tf.name_scope("trim"):
-            x = x[:,:max_size]
-            x_mask = x_mask[:,:max_size]
+            x = x[:,:input_limit]
+            x_mask = x_mask[:,:input_limit]
 
     # Length of each sequence
     # (batch)
@@ -154,18 +127,18 @@ def get_input(features, name, words, emb, max_size=None, oov_buckets=0):
 
     with tf.name_scope("embed"):
         # Convert strings to ids
-        # (batch, max_size)
+        # (batch, input_limit)
         x = tf.contrib.lookup.index_table_from_tensor(
             mapping=words,
             default_value=1,
             num_oov_buckets=oov_buckets).lookup(x)
 
         # Replace with embeddings
-        # (batch, max_size, emb_size)
+        # (batch, input_limit, emb_size)
         x = tf.nn.embedding_lookup(emb, x)
 
         # Clear embeddings for pads
-        # (batch, max_size, emb_size)
+        # (batch, input_limit, emb_size)
         x = tf.multiply(x, tf.expand_dims(x_mask, -1))
 
     return x, x_len
