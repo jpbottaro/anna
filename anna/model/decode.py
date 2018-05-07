@@ -54,15 +54,17 @@ class DecoderBR(Decoder):
             # Threshold on 0.5
             predictions = tf.round(probabilities)
 
-        # Compute loss.
-        with tf.name_scope("loss"):
-            # Binary cross-entropy loss, allowing multiple labels per instance
-            # (batch, n_classes)
-            loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,
-                                                           logits=logits)
+        loss = None
+        if labels is not None:
+            # Compute loss.
+            with tf.name_scope("loss"):
+                # Binary cross-entropy loss, with multiple labels per instance
+                # (batch, n_classes)
+                loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,
+                                                               logits=logits)
 
-            # Average loss for all batches/classes
-            # scalar
-            loss = tf.reduce_mean(loss)
+                # Average loss for all batches/classes
+                # scalar
+                loss = tf.reduce_mean(loss)
 
         return predictions, loss

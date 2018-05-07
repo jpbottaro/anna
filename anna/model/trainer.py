@@ -103,18 +103,22 @@ def model_fn(features, labels, mode, params):
     label_vocab = params["label_vocab"]
 
     with tf.name_scope("expected_output"):
-        labels = label_idx_to_hot(labels, label_vocab)
+        if labels is not None:
+            labels = label_idx_to_hot(labels, label_vocab)
 
     with tf.name_scope("model"):
         net = encoder(features, mode)
         predictions, loss = decoder(net, labels, mode)
+
+    metrics = None
+    if mode in [tf.estimator.ModeKeys.EVAL, tf.estimator.ModeKeys.TRAIN]:
+        metrics = create_metrics(labels, predictions, label_vocab)
 
     train_op = None
     if mode == tf.estimator.ModeKeys.TRAIN:
         train_op = create_optimizer(loss)
 
     pred = {"predictions": predictions}
-    metrics = create_metrics(labels, predictions, label_vocab)
     return tf.estimator.EstimatorSpec(mode,
                                       loss=loss,
                                       train_op=train_op,
