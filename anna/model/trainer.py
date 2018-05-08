@@ -2,6 +2,7 @@
 
 import os
 import tensorflow as tf
+import anna.model.metrics as metrics
 
 
 class Trainer:
@@ -10,8 +11,8 @@ class Trainer:
     using:
         - Encoder: Takes the input and creates a tensor representation (e.g.
                    average word embeddings, RNN, etc.)
-        - Decoder: Original input and output from the encoder, and builds the
-                   result (e.g. feedforward, classifier chains, RNN, etc.)
+        - Decoder: Builds the output and loss functions (e.g. feedforward,
+                   classifier chains, RNN, etc.)
     """
 
     def __init__(self,
@@ -55,25 +56,26 @@ class Trainer:
             val_size (int): size of the validation set, in nr of docs
             epochs (int): max number of epochs to run
         """
-        train_input = lambda: input_fn(docs.skip(val_size),
-                                       batch_size=self.batch_size,
-                                       shuffle=10000)
-        val_input = lambda: input_fn(docs.take(val_size),
-                                     batch_size=self.batch_size)
-        test_input = None
-        if test_docs:
-            test_input = lambda: input_fn(test_docs,
-                                          batch_size=self.batch_size)
+        def train_input():
+            return input_fn(docs.skip(val_size),
+                            batch_size=self.batch_size,
+                            shuffle=10000)
+
+        def val_input():
+            return input_fn(docs.take(val_size), batch_size=self.batch_size)
+
+        def test_input():
+            return input_fn(test_docs, batch_size=self.batch_size)
 
         i = 0
         while i < epochs:
             print("Starting epoch #{}".format(i))
             self.estimator.train(input_fn=train_input)
             val_m = self.estimator.evaluate(val_input, name="val")
-            print_metrics("val", val_m)
-            if test_input:
+            metrics.display("val", val_m)
+            if test_docs:
                 test_m = self.estimator.evaluate(test_input, name="test")
-                print_metrics("test", test_m)
+                metrics.display("test", test_m)
             i += 1
 
 
@@ -118,9 +120,9 @@ def model_fn(features, labels, mode, params):
         net = encoder(features, mode)
         predictions, loss = decoder(net, labels, mode)
 
-    metrics = None
+    eval_metric_ops = None
     if mode in [tf.estimator.ModeKeys.EVAL, tf.estimator.ModeKeys.TRAIN]:
-        metrics = create_metrics(labels, predictions, label_vocab)
+        eval_metric_ops = metrics.create(labels, predictions, label_vocab)
 
     train_op = None
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -130,7 +132,7 @@ def model_fn(features, labels, mode, params):
     return tf.estimator.EstimatorSpec(mode,
                                       loss=loss,
                                       train_op=train_op,
-                                      eval_metric_ops=metrics,
+                                      eval_metric_ops=eval_metric_ops,
                                       predictions=pred)
 
 
@@ -148,60 +150,6 @@ def label_idx_to_hot(labels, vocab):
     # Turn labels into fixed-sized 1/0 vector
     # (batch, n_classes)
     return tf.reduce_sum(labels, 1)
-
-
-def label_hot_to_idx(name, labels, vocab):
-    # Find all positive labels (ignoring which document they come from)
-    idx = tf.cast(tf.where(tf.equal(labels, 1.)), tf.int64)
-    idx = idx[:, 1]
-
-    # Fetch string labels for the first document
-    first_idx = tf.cast(tf.where(tf.equal(labels[0], 1.)), tf.int64)
-    names = tf.contrib.lookup.index_to_string_table_from_tensor(
-        vocab,
-        default_value="_UNK_",
-        name="{}_output".format(name)).lookup(first_idx)
-
-    return idx, names
-
-
-def create_metrics(labels, predictions, vocab):
-    with tf.name_scope("metrics"):
-        expected_labels_idx, expected_labels_str = label_hot_to_idx(
-            "expected", labels, vocab)
-        predicted_labels_idx, predicted_labels_str = label_hot_to_idx(
-            "predicted", predictions, vocab)
-
-        n_expected_labels = tf.metrics.mean(tf.reduce_sum(labels, 1))
-        n_predicted_labels = tf.metrics.mean(tf.reduce_sum(predictions, 1))
-        precision = tf.metrics.precision(labels, predictions)
-        recall = tf.metrics.recall(labels, predictions)
-        accuracy = tf.metrics.mean(
-            tf.reduce_all(tf.equal(labels, predictions), 1))
-
-    tf.summary.scalar("out/n_expected_labels", n_expected_labels[1])
-    tf.summary.scalar("out/n_predicted_labels", n_predicted_labels[1])
-    tf.summary.scalar("perf/accuracy", accuracy[1])
-    tf.summary.scalar("perf/precision", precision[1])
-    tf.summary.scalar("perf/recall", recall[1])
-    tf.summary.text("out/expected_labels_examples", expected_labels_str)
-    tf.summary.text("out/predicted_labels_examples", predicted_labels_str)
-    tf.summary.histogram("out/expected_labels_dist", expected_labels_idx)
-    tf.summary.histogram("out/predicted_labels_dist", predicted_labels_idx)
-
-    return {
-        "out/n_expected_labels": n_expected_labels,
-        "out/n_predicted_labels": n_predicted_labels,
-        "perf/accuracy": accuracy,
-        "perf/precision": precision,
-        "perf/recall": recall,
-    }
-
-
-def print_metrics(name, metrics):
-    print("\t{}\tloss: {:.6f}".format(name, metrics["loss"]))
-    print("\t\t" + "\t".join(["{}: {:.4f}".format(k[5:], v)
-                              for k, v in metrics.items() if "perf" in k]))
 
 
 def create_optimizer(loss):
