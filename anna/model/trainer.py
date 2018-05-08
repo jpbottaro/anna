@@ -31,11 +31,15 @@ class Trainer:
             encoder (Encoder): transforms the input text into numbers
             decoder (Decoder): takes the encoded input and produces labels
         """
+        config = tf.estimator.RunConfig(
+            keep_checkpoint_max=1
+        )
         model_dir = os.path.join(data_dir, "model", name)
         self.batch_size = batch_size
         self.estimator = tf.estimator.Estimator(
             model_fn=model_fn,
             model_dir=model_dir,
+            config=config,
             params={
                 "encoder": encoder,
                 "decoder": decoder,
@@ -71,8 +75,9 @@ class Trainer:
         while i < epochs:
             print("Starting epoch #{}".format(i))
             self.estimator.train(input_fn=train_input)
-            val_m = self.estimator.evaluate(val_input, name="val")
-            metrics.display("val", val_m)
+            if val_size:
+                val_m = self.estimator.evaluate(val_input, name="val")
+                metrics.display("val", val_m)
             if test_docs:
                 test_m = self.estimator.evaluate(test_input, name="test")
                 metrics.display("test", test_m)
