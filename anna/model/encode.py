@@ -195,57 +195,71 @@ class EncoderCNN(Encoder):
         return tf.concat(pools, 1)
 
 
-class EncoderRNNLast(Encoder):
+class EncoderRNN(Encoder):
+    """
+    Encodes the input using a bidirectional GRU, returning the the outputs for
+    all steps, and the last two states in both directions.
+    """
+
+    def encode(self, x, x_len, name):
+        """
+        Uses a bidirectional GRU to encode the input `x`.
+
+        Args:
+            x (tf.Tensor [batch, len, emb_size]): the padded input documents, as
+              a list of embeddings.
+            x_len (tf.Tensor [batch]): the size of each document.
+            name (str, optional): name for this operation.
+
+        Returns:
+            outputs (tf.Tensor [batch, len, rnn_size]): the output of the rnn
+              at each step.
+            states (tf.Tensor [batch, rnn_size]): the last rnn output of each
+              document.
+        """
+        x_len = tf.cast(x_len, tf.int32)
+        c_fw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_fw", reuse=tf.AUTO_REUSE)
+        c_bw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_bw", reuse=tf.AUTO_REUSE)
+
+        # Run encoding RNN
+        # states: 2 x (batch_size, rnn_hidden_size)
+        outputs, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
+                                                          c_bw,
+                                                          x,
+                                                          sequence_length=x_len,
+                                                          dtype=tf.float32)
+
+        # Concatenate forward and backward passes
+        # first: (batch_size, size, 2 * rnn_hidden_size)
+        # second: (batch_size, 2 * rnn_hidden_size)
+        return tf.concat(outputs, 2), tf.concat(states, 1)
+
+
+class EncoderRNNLast(EncoderRNN):
     """
     Encodes the input using a bidirectional GRU, returning the output
     from the last RNN steps concatenated.
     """
 
     def encode(self, x, x_len, name):
-        seq_len = tf.cast(x_len, tf.int32)
-        c_fw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_fw", reuse=tf.AUTO_REUSE)
-        c_bw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_bw", reuse=tf.AUTO_REUSE)
+        _, states = super().encode(x, x_len, name)
 
-        # Run encoding RNN
-        # states: 2 x (batch_size, rnn_hidden_size)
-        _, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
-                                                    c_bw,
-                                                    x,
-                                                    sequence_length=seq_len,
-                                                    dtype=tf.float32)
-
-        # Concatenate last outputs of each direction
-        # (batch, rnn_hidden_size * 2)
-        return tf.concat(states, 1)
+        return states
 
 
-class EncoderRNNAvg(Encoder):
+class EncoderRNNAvg(EncoderRNN):
     """
     Encodes the input using a bidirectional GRU, returning the
     average output value in both directions.
     """
 
     def encode(self, x, x_len, name):
-        seq_len = tf.cast(x_len, tf.int32)
-        c_fw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_fw", reuse=tf.AUTO_REUSE)
-        c_bw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_bw", reuse=tf.AUTO_REUSE)
-
-        # Run encoding RNN
-        # output: 2 x (batch_size, size, rnn_hidden_size)
-        outputs, _ = tf.nn.bidirectional_dynamic_rnn(c_fw,
-                                                     c_bw,
-                                                     x,
-                                                     sequence_length=seq_len,
-                                                     dtype=tf.float32)
+        outputs, _ = super().encode(x, x_len, name)
 
         # Avoid zero division
         # (batch, 1)
         x_len = tf.maximum(x_len, tf.ones_like(x_len))
         x_len = x_len[:, tf.newaxis]
-
-        # Concatenate forward and backward passes
-        # (batch_size, size, 2 * rnn_hidden_size)
-        outputs = tf.concat(outputs, 2)
 
         # Average all hidden vectors
         # (batch_size, rnn_hidden_size)
