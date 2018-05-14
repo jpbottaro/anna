@@ -1,3 +1,10 @@
+"""Tensorflow implementation of metrics for Multi-label Classification.
+
+Metrics: Subset Accuracy, Hamming accuracy, example-based f1, and label-based
+         micro/macro f1.
+
+Definitions from: https://papers.nips.cc/paper/7125-maximizing-subset-accuracy-with-recurrent-neural-networks-in-multi-label-classification.pdf"""  # noqa
+
 import tensorflow as tf
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops

@@ -1,3 +1,9 @@
+"""Multi-label classification decoders using network-inspired architectures.
+
+## Binary relevance decoder (independent binary classifier per label).
+
+@@DecoderBR
+"""
 import tensorflow as tf
 
 

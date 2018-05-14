@@ -1,3 +1,23 @@
+"""Text encoders using neural network-inspired architectures.
+
+Several encoders are defined, all using works as tokens (i.e. the atomic text
+unit).
+
+## Non-parametric encoders
+
+@@EncoderAvg
+@@EncoderMax
+
+## CNN-based encoder
+
+@@EncoderCNN
+
+## RNN-based encoder (using GRU)
+
+@@EncoderRNN
+@@EncoderRNNAvg
+@@EncoderRNNLast
+"""
 import numpy as np
 import tensorflow as tf
 import anna.data.dataset.fasttext as embeddings
@@ -217,12 +237,18 @@ class EncoderRNN(Encoder):
             states (tf.Tensor [batch, rnn_size]): the last rnn output of each
               document.
         """
+        hidden_size = 1024
         x_len = tf.cast(x_len, tf.int32)
-        c_fw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_fw", reuse=tf.AUTO_REUSE)
-        c_bw = tf.nn.rnn_cell.GRUCell(1024, name="rnn_bw", reuse=tf.AUTO_REUSE)
+        c_fw = tf.nn.rnn_cell.GRUCell(hidden_size,
+                                      name="rnn_fw",
+                                      reuse=tf.AUTO_REUSE)
+        c_bw = tf.nn.rnn_cell.GRUCell(hidden_size,
+                                      name="rnn_bw",
+                                      reuse=tf.AUTO_REUSE)
 
-        # Run encoding RNN
-        # states: 2 x (batch_size, rnn_hidden_size)
+        # Runs encoding RNN
+        # outputs: 2 x (batch_size, size, hidden_size)
+        # states: 2 x (batch_size, hidden_size)
         outputs, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
                                                           c_bw,
                                                           x,
@@ -230,8 +256,8 @@ class EncoderRNN(Encoder):
                                                           dtype=tf.float32)
 
         # Concatenate forward and backward passes
-        # first: (batch_size, size, 2 * rnn_hidden_size)
-        # second: (batch_size, 2 * rnn_hidden_size)
+        # first: (batch_size, size, 2 * hidden_size)
+        # second: (batch_size, 2 * hidden_size)
         return tf.concat(outputs, 2), tf.concat(states, 1)
 
 

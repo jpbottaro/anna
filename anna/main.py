@@ -3,7 +3,6 @@
 import os
 import sys
 import anna.model.premade as models
-import anna.data.dataset.fasttext as embeddings
 import anna.data.dataset.reuters21578 as data
 
 
