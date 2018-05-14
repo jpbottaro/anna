@@ -164,7 +164,42 @@ def label_idx_to_hot(labels, vocab):
     return tf.reduce_sum(labels, 1)
 
 
-def create_optimizer(loss):
-    with tf.name_scope("optimizer"):
-        optimizer = tf.train.AdamOptimizer()
-        return optimizer.minimize(loss, global_step=tf.train.get_global_step())
+def create_optimizer(loss, learning_rate=0.001, max_norm=5.0):
+    """
+    Creates an optimizing operation for the given loss function.
+
+    Args:
+        loss (tf.Tensor): a loss function to optimize against
+        learning_rate (float): the learning rate for the optimizer
+        max_norm (float): maximum norm for any gradient when doing the update
+
+    Returns:
+        updater (tf.Tensor): operation that updates a single step of the network
+    """
+    opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    grad, var = zip(*opt.compute_gradients(loss))
+
+    if max_norm > 0.:
+        grad = clip_gradients(grad, max_norm)
+
+    return opt.apply_gradients(zip(grad, var),
+                               global_step=tf.train.get_global_step())
+
+
+def clip_gradients(gradients, max_norm):
+    """
+    Clips gradients to the maximum `max_norm`.
+
+    Args:
+        gradients: the gradients to be applied when optimizing
+        max_norm: the maximum norm for each gradient
+
+    Returns:
+        gradients: the gradients to be applied when optimizing
+    """
+    gradients, norm = tf.clip_by_global_norm(gradients, max_norm)
+
+    tf.summary.scalar("misc/grad_norm", norm)
+    tf.summary.scalar("misc/clipped_gradient", tf.global_norm(gradients))
+
+    return gradients
