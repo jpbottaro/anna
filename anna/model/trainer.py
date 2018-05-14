@@ -86,13 +86,20 @@ class Trainer:
 
 def input_fn(docs, batch_size=32, shuffle=None, repeat=None):
     with tf.name_scope("input_processing"):
-        def mask(doc, labels):
-            title_mask = tf.ones_like(doc["title"], dtype=tf.float32)
-            text_mask = tf.ones_like(doc["text"], dtype=tf.float32)
-            doc["title_mask"] = title_mask
-            doc["text_mask"] = text_mask
+        def pad_empty(doc, labels):
+            doc = {k: tf.cond(tf.equal(tf.shape(v)[0], 0),
+                              lambda: tf.constant([""]),
+                              lambda: v)
+                   for k, v in doc.items()}
             return doc, labels
 
+        def mask(doc, labels):
+            ret = {k + "_mask": tf.ones_like(v, dtype=tf.float32)
+                   for k, v in doc.items()}
+            ret.update(doc)
+            return ret, labels
+
+        docs = docs.map(pad_empty)
         docs = docs.map(mask)
 
         if repeat:
