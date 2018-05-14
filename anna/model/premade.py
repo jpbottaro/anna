@@ -39,6 +39,15 @@ class RNNavgxBR(Trainer):
                          name="rnn_avg_br")
 
 
+class EncDec(Trainer):
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
+                         labels,
+                         EncoderRNNLast(data_dir, input_limit=300),
+                         DecoderRNNLast(data_dir, labels),
+                         name="enc_dec")
+
+
 class CNNxBR(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,

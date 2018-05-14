@@ -245,7 +245,7 @@ def f_example(labels,
                            'supported when eager execution is enabled.')
 
     # Calculate the double of the true positives
-    value = 2. * math_ops.reduce_sum(math_ops.multiply(labels, predictions), 1)
+    value = 2. * math_ops.reduce_sum(labels * predictions, 1)
 
     # Calculate denominator as sum of non-zero values of both matrices
     den = math_ops.count_nonzero(labels, 1) + \

@@ -20,6 +20,7 @@ unit).
 """
 import numpy as np
 import tensorflow as tf
+import anna.model.utils as utils
 import anna.data.dataset.fasttext as embeddings
 
 
@@ -89,20 +90,21 @@ class Encoder:
                                          emb,
                                          self.input_limit,
                                          self.oov_buckets)
-                    inputs.append(self.encode(x, x_len, name))
+                    inputs.append(self.encode(x, x_len, mode, name))
 
             # Concatenate inputs, two options:
             # fixed: (batch, len(input_names) * emb_size)
             # variable: (batch, sum(input_sizes), emb_size)
             return tf.concat(inputs, 1)
 
-    def encode(self, x, x_len, name):
+    def encode(self, x, x_len, mode, name):
         """
         Encode a given tensor `x` with length `x_len`.
 
         Args:
             x (tf.Tensor): the tensor we want to encode
             x_len (tf.Tensor): the length `x`
+            mode (tf.estimator.ModeKeys): the mode we are on
             name (str): name of the tensor
 
         Returns:
@@ -168,7 +170,7 @@ class EncoderAvg(Encoder):
     Encodes the input as an average of its word embeddings.
     """
 
-    def encode(self, x, x_len, name):
+    def encode(self, x, x_len, mode, name):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
         x_len = x_len[:, tf.newaxis]
@@ -180,7 +182,7 @@ class EncoderMax(Encoder):
     Encodes the input taking the max of each of its word embedding dimentions.
     """
 
-    def encode(self, x, x_len, name):
+    def encode(self, x, x_len, mode, name):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
         return tf.reduce_max(x, 1)
@@ -191,7 +193,7 @@ class EncoderCNN(Encoder):
     Encodes the input using a simple CNN and max-over-time pooling.
     """
 
-    def encode(self, x, x_len, name):
+    def encode(self, x, x_len, mode, name):
         pools = []
         for size in [2, 3, 4]:
             # Run CNN over words
@@ -217,11 +219,11 @@ class EncoderCNN(Encoder):
 
 class EncoderRNN(Encoder):
     """
-    Encodes the input using a bidirectional GRU, returning the the outputs for
-    all steps, and the last two states in both directions.
+    Encodes the input using a bidirectional GRU, returning the outputs for
+    all steps.
     """
 
-    def encode(self, x, x_len, name):
+    def rnn_encode(self, x, x_len, mode, name):
         """
         Uses a bidirectional GRU to encode the input `x`.
 
@@ -237,14 +239,15 @@ class EncoderRNN(Encoder):
             states (tf.Tensor [batch, rnn_size]): the last rnn output of each
               document.
         """
-        hidden_size = 1024
+        dropout = 0.5
+        hidden_size = 256
         x_len = tf.cast(x_len, tf.int32)
-        c_fw = tf.nn.rnn_cell.GRUCell(hidden_size,
-                                      name="rnn_fw",
-                                      reuse=tf.AUTO_REUSE)
-        c_bw = tf.nn.rnn_cell.GRUCell(hidden_size,
-                                      name="rnn_bw",
-                                      reuse=tf.AUTO_REUSE)
+        c_fw = utils.rnn_cell(hidden_size, dropout, mode,
+                              name="rnn_fw",
+                              reuse=tf.AUTO_REUSE)
+        c_bw = utils.rnn_cell(hidden_size, dropout, mode,
+                              name="rnn_bw",
+                              reuse=tf.AUTO_REUSE)
 
         # Runs encoding RNN
         # outputs: 2 x (batch_size, size, hidden_size)
@@ -253,12 +256,17 @@ class EncoderRNN(Encoder):
                                                           c_bw,
                                                           x,
                                                           sequence_length=x_len,
+                                                          swap_memory=True,
                                                           dtype=tf.float32)
 
         # Concatenate forward and backward passes
         # first: (batch_size, size, 2 * hidden_size)
         # second: (batch_size, 2 * hidden_size)
         return tf.concat(outputs, 2), tf.concat(states, 1)
+
+    def encode(self, x, x_len, mode, name):
+        outputs, states = self.rnn_encode(x, x_len, name)
+        return outputs
 
 
 class EncoderRNNLast(EncoderRNN):
@@ -267,8 +275,8 @@ class EncoderRNNLast(EncoderRNN):
     from the last RNN steps concatenated.
     """
 
-    def encode(self, x, x_len, name):
-        _, states = super().encode(x, x_len, name)
+    def encode(self, x, x_len, mode, name):
+        _, states = super().rnn_encode(x, x_len, mode, name)
 
         return states
 
@@ -279,8 +287,8 @@ class EncoderRNNAvg(EncoderRNN):
     average output value in both directions.
     """
 
-    def encode(self, x, x_len, name):
-        outputs, _ = super().encode(x, x_len, name)
+    def encode(self, x, x_len, mode, name):
+        outputs, _ = super().rnn_encode(x, x_len, mode, name)
 
         # Avoid zero division
         # (batch, 1)
