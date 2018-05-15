@@ -45,7 +45,9 @@ class EncDec(Trainer):
                          labels,
                          EncoderRNNLast(data_dir, input_limit=300),
                          DecoderRNNLast(data_dir, labels),
-                         name="enc_dec")
+                         name="enc_dec",
+                         learning_rate=0.00001,
+                         grad_clip=1.0)
 
 
 class CNNxBR(Trainer):

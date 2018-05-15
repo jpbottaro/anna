@@ -21,7 +21,9 @@ class Trainer:
                  encoder,
                  decoder,
                  name="unnamed",
-                 batch_size=32):
+                 batch_size=32,
+                 learning_rate=0.001,
+                 grad_clip=0.):
         """
         Trains Multi-label Classification models.
 
@@ -30,6 +32,10 @@ class Trainer:
             labels (list[str]): list of possible labels
             encoder (Encoder): transforms the input text into numbers
             decoder (Decoder): takes the encoded input and produces labels
+            name (str): name for the model (used to save checkpoints/summaries)
+            batch_size (int): batch size for training
+            learning_rate (float): training learning rate
+            grad_clip (float): maximum norm for gradients when optimizing
         """
         config = tf.estimator.RunConfig(
             keep_checkpoint_max=1
@@ -43,7 +49,9 @@ class Trainer:
             params={
                 "encoder": encoder,
                 "decoder": decoder,
-                "label_vocab": labels
+                "label_vocab": labels,
+                "learning_rate": learning_rate,
+                "grad_clip": grad_clip
             })
 
     def train(self, docs, test_docs=None, val_size=500, epochs=50):
@@ -123,6 +131,8 @@ def model_fn(features, labels, mode, params):
     encoder = params["encoder"]
     decoder = params["decoder"]
     label_vocab = params["label_vocab"]
+    lr = params["learning_rate"]
+    grad_clip = params["grad_clip"]
 
     with tf.name_scope("expected_output"):
         if labels is not None:
@@ -138,7 +148,7 @@ def model_fn(features, labels, mode, params):
 
     train_op = None
     if mode == tf.estimator.ModeKeys.TRAIN:
-        train_op = create_optimizer(loss)
+        train_op = create_optimizer(loss, lr, grad_clip)
 
     pred = {"predictions": predictions}
     return tf.estimator.EstimatorSpec(mode,
@@ -164,7 +174,7 @@ def label_idx_to_hot(labels, vocab):
     return tf.reduce_sum(labels, 1)
 
 
-def create_optimizer(loss, learning_rate=0.001, max_norm=5.0):
+def create_optimizer(loss, learning_rate, max_norm):
     """
     Creates an optimizing operation for the given loss function.
 
