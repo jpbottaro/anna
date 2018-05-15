@@ -11,8 +11,6 @@ def rnn_cell(num_units, dropout, mode, residual=False, name=None, reuse=None):
         cell = tf.nn.rnn_cell.DropoutWrapper(
             cell=cell,
             input_keep_prob=keep_prop,
-            output_keep_prob=keep_prop,
-            state_keep_prob=keep_prop
         )
 
     if residual:
