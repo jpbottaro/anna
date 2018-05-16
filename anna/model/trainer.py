@@ -23,7 +23,9 @@ class Trainer:
                  name="unnamed",
                  batch_size=32,
                  learning_rate=0.001,
-                 grad_clip=0.):
+                 grad_clip=0.,
+                 decay_rate=1.,
+                 decay_steps=0):
         """
         Trains Multi-label Classification models.
 
@@ -36,6 +38,8 @@ class Trainer:
             batch_size (int): batch size for training
             learning_rate (float): training learning rate
             grad_clip (float): maximum norm for gradients when optimizing
+            decay_rate (float): the factor to decay the learning rate
+            decay_steps (int): how many steps to wait for each decay
         """
         config = tf.estimator.RunConfig(
             keep_checkpoint_max=1
@@ -51,7 +55,9 @@ class Trainer:
                 "decoder": decoder,
                 "label_vocab": labels,
                 "learning_rate": learning_rate,
-                "grad_clip": grad_clip
+                "grad_clip": grad_clip,
+                "decay_rate": decay_rate,
+                "decay_steps": decay_steps
             })
 
     def train(self, docs, test_docs=None, val_size=500, epochs=50):
@@ -133,6 +139,8 @@ def model_fn(features, labels, mode, params):
     label_vocab = params["label_vocab"]
     lr = params["learning_rate"]
     grad_clip = params["grad_clip"]
+    decay_rate = params["decay_rate"]
+    decay_steps = params["decay_steps"]
 
     with tf.name_scope("expected_output"):
         if labels is not None:
@@ -148,7 +156,7 @@ def model_fn(features, labels, mode, params):
 
     train_op = None
     if mode == tf.estimator.ModeKeys.TRAIN:
-        train_op = create_optimizer(loss, lr, grad_clip)
+        train_op = create_optimizer(loss, lr, grad_clip, decay_rate, decay_steps)
 
     pred = {"predictions": predictions}
     return tf.estimator.EstimatorSpec(mode,
@@ -174,7 +182,7 @@ def label_idx_to_hot(labels, vocab):
     return tf.reduce_sum(labels, 1)
 
 
-def create_optimizer(loss, learning_rate, max_norm):
+def create_optimizer(loss, learning_rate, max_norm, decay_rate, decay_steps):
     """
     Creates an optimizing operation for the given loss function.
 
@@ -182,18 +190,27 @@ def create_optimizer(loss, learning_rate, max_norm):
         loss (tf.Tensor): a loss function to optimize against
         learning_rate (float): the learning rate for the optimizer
         max_norm (float): maximum norm for any gradient when doing the update
+        decay_rate (float): the factor to decay the learning rate
+        decay_steps (int): how many steps to wait for each decay
 
     Returns:
         updater (tf.Tensor): operation that updates a single step of the network
     """
+    global_step = tf.train.get_or_create_global_step()
+
+    if decay_rate < 1.:
+        learning_rate = tf.train.exponential_decay(
+            learning_rate, global_step, decay_steps, decay_rate, staircase=True)
+
+    tf.summary.scalar("misc/learning_rate", learning_rate)
+
     opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
     grad, var = zip(*opt.compute_gradients(loss))
 
     if max_norm > 0.:
         grad = clip_gradients(grad, max_norm)
 
-    return opt.apply_gradients(zip(grad, var),
-                               global_step=tf.train.get_global_step())
+    return opt.apply_gradients(zip(grad, var), global_step=global_step)
 
 
 def clip_gradients(gradients, max_norm):
