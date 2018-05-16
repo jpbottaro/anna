@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 def rnn_cell(num_units, dropout, mode, residual=False, name=None, reuse=None):
-    dropout = dropout if mode == tf.contrib.learn.ModeKeys.TRAIN else 0.0
+    dropout = dropout if mode == tf.estimator.ModeKeys.TRAIN else 0.0
 
     cell = tf.nn.rnn_cell.GRUCell(num_units, name=name, reuse=reuse)
 
