@@ -240,7 +240,7 @@ class EncoderRNN(Encoder):
               document.
         """
         dropout = 0.5
-        hidden_size = 256
+        hidden_size = 128
         x_len = tf.cast(x_len, tf.int32)
         c_fw = utils.rnn_cell(hidden_size, dropout, mode,
                               name="rnn_fw",
