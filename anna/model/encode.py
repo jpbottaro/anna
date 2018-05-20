@@ -281,9 +281,6 @@ class EncoderRNN(Encoder):
         super().__init__(
             data_dir, input_names, input_limit, emb_size, oov_buckets)
 
-        if rnn_type != "lstm":
-            rnn_trim_state = False
-
         self.hidden_size = hidden_size
         self.dropout = dropout
         self.rnn_type = rnn_type
@@ -328,11 +325,11 @@ class EncoderBiRNN(EncoderRNN):
     def encode(self, x, x_len, mode, name):
         x_len = tf.to_int32(x_len)
         c_fw = utils.rnn_cell(self.rnn_type,
-                              self.hidden_size / 2,
+                              self.hidden_size // 2,
                               mode,
                               self.dropout)
         c_bw = utils.rnn_cell(self.rnn_type,
-                              self.hidden_size / 2,
+                              self.hidden_size // 2,
                               mode,
                               self.dropout)
 
