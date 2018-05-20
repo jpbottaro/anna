@@ -6,6 +6,7 @@
 """
 import tensorflow as tf
 import anna.model.utils as utils
+from anna.model.bridge import DenseBridge
 
 
 class Decoder:
@@ -91,6 +92,7 @@ class DecoderRNN(Decoder):
                  max_steps=20,
                  emb_size=300,
                  rnn_type="lstm",
+                 bridge=DenseBridge(),
                  dropout=0.5):
         """
         Binary Relevance decoder, where each label is an independent
@@ -108,6 +110,7 @@ class DecoderRNN(Decoder):
         self.emb_size = emb_size
         self.rnn_type = rnn_type
         self.dropout = dropout
+        self.bridge = bridge
 
         special_labels = ["_PAD_", "_SOS_", "_EOS_"]
         self.voc = special_labels + label_voc
@@ -300,7 +303,8 @@ class DecoderRNN(Decoder):
                               self.hidden_size,
                               mode,
                               self.dropout)
-        init = utils.rnn_build_state(cell.zero_state(batch_size, tf.float32),
-                                     encoder_output)
+
+        zero_state = cell.zero_state(batch_size, tf.float32)
+        init = self.bridge(zero_state, encoder_output)
 
         return cell, init
