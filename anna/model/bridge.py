@@ -27,7 +27,7 @@ class Bridge:
 
         Returns:
             init_state (tf.Tensor): same size as `zero_state`, initialized with
-              `init`.
+              `init_state`.
         """
         raise NotImplementedError
 
