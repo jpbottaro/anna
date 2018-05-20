@@ -12,11 +12,10 @@ unit).
 
 @@EncoderCNN
 
-## RNN-based encoder (using GRU)
+## RNN-based encoder
 
-@@EncoderRNN
-@@EncoderRNNAvg
-@@EncoderRNNLast
+@@EncoderUniRNN
+@@EncoderBiRNN
 """
 import numpy as np
 import tensorflow as tf
@@ -73,7 +72,12 @@ class Encoder:
             mode (tf.estimator.ModeKeys): the mode we are on
 
         Returns:
-            y (tf.Tensor): the final representation of `x`
+            mem (tf.Tensor): sequential representation of the input.
+              [batch, sum(len), size]
+            mem_len (tf.Tensor): length of `mem`.
+              [batch]
+            mem_fixed (tf.Tensor): fixed-sized representation of the input.
+              [batch, size]
         """
         emb = tf.get_variable("word_embeddings",
                               self.emb.shape,
@@ -81,7 +85,9 @@ class Encoder:
 
         with tf.name_scope("encoder"):
             # Encode all inputs
-            inputs = []
+            memory = []
+            memory_len = []
+            memory_fixed = []
             for name in self.input_names:
                 with tf.name_scope("input_" + name):
                     x, x_len = get_input(features,
@@ -90,12 +96,23 @@ class Encoder:
                                          emb,
                                          self.input_limit,
                                          self.oov_buckets)
-                    inputs.append(self.encode(x, x_len, mode, name))
+                    mem, mem_len, mem_fixed = self.encode(x, x_len, mode, name)
+                    # (batch, seq_len, size)
+                    memory.append(mem)
+                    # (batch)
+                    memory_len.append(mem_len)
+                    # (batch, emb_size)
+                    memory_fixed.append(mem_fixed)
 
-            # Concatenate inputs, two options:
-            # fixed: (batch, len(input_names) * emb_size)
-            # variable: (batch, sum(input_sizes), emb_size)
-            return tf.concat(inputs, 1)
+            # Concatenate variable memory:
+            # (batch, sum(seq_len), size)
+            final_memory, final_memory_len = seq_concat(memory, memory_len)
+
+            # Concatenate fixed memory:
+            # (batch, len(input_names) * emb_size)
+            final_memory_fixed = tf.concat(memory_fixed, -1)
+
+            return final_memory, final_memory_len, final_memory_fixed
 
     def encode(self, x, x_len, mode, name):
         """
@@ -108,7 +125,12 @@ class Encoder:
             name (str): name of the tensor
 
         Returns:
-            y (tf.Tensor): the final representation of `x`
+            mem (tf.Tensor): sequential representation of the input.
+              [batch, sum(len), size]
+            mem_len (tf.Tensor): length of `mem`.
+              [batch]
+            mem_fixed (tf.Tensor): fixed-sized representation of the input.
+              [batch, size]
         """
         raise NotImplementedError
 
@@ -165,6 +187,26 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
     return x, x_len
 
 
+def seq_concat(memory, memory_len):
+    """
+    Concatenates a list of sequential memories into a single sequence.
+
+    Args:
+        memory (list[tf.Tensor]): a list of sequential tensors to concatenate.
+          [batch, len, size]
+        memory_len (list[tf.Tensor]): the length tensor in `memory`.
+          [batch]
+
+    Returns:
+        final_mem (tf.Tensor): sequential representation of the input.
+          [batch, sum(len), size]
+        final_mem_len (tf.Tensor): length of `final_mem`.
+          [batch]
+    """
+    # TODO
+    return None, None
+
+
 class EncoderAvg(Encoder):
     """
     Encodes the input as an average of its word embeddings.
@@ -174,7 +216,9 @@ class EncoderAvg(Encoder):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
         x_len = x_len[:, tf.newaxis]
-        return tf.reduce_sum(x, 1) / tf.maximum(x_len, tf.ones_like(x_len))
+        result = tf.reduce_sum(x, 1) / tf.maximum(x_len, tf.ones_like(x_len))
+
+        return x, x_len, result
 
 
 class EncoderMax(Encoder):
@@ -185,7 +229,7 @@ class EncoderMax(Encoder):
     def encode(self, x, x_len, mode, name):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
-        return tf.reduce_max(x, 1)
+        return x, x_len, tf.reduce_max(x, 1)
 
 
 class EncoderCNN(Encoder):
@@ -214,44 +258,87 @@ class EncoderCNN(Encoder):
 
         # Max over-time pooling
         # (batch, cnns * filters)
-        return tf.concat(pools, 1)
+        result = tf.concat(pools, 1)
+
+        return x, x_len, result
 
 
 class EncoderRNN(Encoder):
     """
-    Encodes the input using a bidirectional GRU, returning the outputs for
+    Encodes the input using a bidirectional RNN, returning the outputs for
     all steps.
     """
 
-    def rnn_encode(self, x, x_len, mode, name):
-        """
-        Uses a bidirectional GRU to encode the input `x`.
+    def __init__(self,
+                 data_dir,
+                 input_names=None,
+                 input_limit=None,
+                 emb_size=20000,
+                 oov_buckets=10000,
+                 rnn_type="lstm",
+                 hidden_size=256,
+                 dropout=.5):
+        super().__init__(
+            data_dir, input_names, input_limit, emb_size, oov_buckets)
 
-        Args:
-            x (tf.Tensor [batch, len, emb_size]): the padded input documents, as
-              a list of embeddings.
-            x_len (tf.Tensor [batch]): the size of each document.
-            name (str, optional): name for this operation.
+        if rnn_type != "lstm":
+            rnn_trim_state = False
 
-        Returns:
-            outputs (tf.Tensor [batch, len, rnn_size]): the output of the rnn
-              at each step.
-            states (tf.Tensor [batch, rnn_size]): the last rnn output of each
-              document.
-        """
-        dropout = 0.5
-        hidden_size = 128
-        x_len = tf.cast(x_len, tf.int32)
-        c_fw = utils.rnn_cell(hidden_size, dropout, mode,
-                              name="rnn_fw",
-                              reuse=tf.AUTO_REUSE)
-        c_bw = utils.rnn_cell(hidden_size, dropout, mode,
-                              name="rnn_bw",
-                              reuse=tf.AUTO_REUSE)
+        self.hidden_size = hidden_size
+        self.dropout = dropout
+        self.rnn_type = rnn_type
+
+    def encode(self, x, x_len, mode, name):
+        raise NotImplementedError
+
+
+class EncoderUniRNN(EncoderRNN):
+    """
+    Encodes the input using a unidirectional RNN.
+    """
+
+    def encode(self, x, x_len, mode, name):
+        x_len = tf.to_int32(x_len)
+        cell = utils.rnn_cell(self.rnn_type,
+                              self.hidden_size,
+                              mode,
+                              self.dropout)
 
         # Runs encoding RNN
-        # outputs: 2 x (batch_size, size, hidden_size)
-        # states: 2 x (batch_size, hidden_size)
+        # out: (batch_size, size, hidden_size)
+        # states: (2 or 0, batch_size, hidden_size)
+        outputs, state = tf.nn.dynamic_rnn(cell,
+                                           x,
+                                           sequence_length=x_len,
+                                           swap_memory=True,
+                                           dtype=tf.float32)
+
+        # Get the right part of the state (useful for tuple states like in LSTM)
+        # (batch_size, 2 * hidden_size)
+        state = utils.rnn_state_trim(self.rnn_type, state)
+
+        return outputs, x_len, state
+
+
+class EncoderBiRNN(EncoderRNN):
+    """
+    Encodes the input using a bidirectional RNN.
+    """
+
+    def encode(self, x, x_len, mode, name):
+        x_len = tf.to_int32(x_len)
+        c_fw = utils.rnn_cell(self.rnn_type,
+                              self.hidden_size / 2,
+                              mode,
+                              self.dropout)
+        c_bw = utils.rnn_cell(self.rnn_type,
+                              self.hidden_size / 2,
+                              mode,
+                              self.dropout)
+
+        # Runs encoding RNN
+        # out: 2 x (batch_size, size, hidden_size)
+        # states: 2 x (2 or 0, batch_size, hidden_size)
         outputs, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
                                                           c_bw,
                                                           x,
@@ -259,42 +346,14 @@ class EncoderRNN(Encoder):
                                                           swap_memory=True,
                                                           dtype=tf.float32)
 
-        # Concatenate forward and backward passes
-        # first: (batch_size, size, 2 * hidden_size)
-        # second: (batch_size, 2 * hidden_size)
-        return tf.concat(outputs, 2), tf.concat(states, 1)
+        # Concatenates outputs
+        # out: (batch_size, size, 2 * hidden_size)
+        # states: (batch_size, 2 * hidden_size)
+        outputs = tf.concat(outputs, axis=-1)
+        states = tf.concat(states, axis=-1)
 
-    def encode(self, x, x_len, mode, name):
-        outputs, states = self.rnn_encode(x, x_len, name)
-        return outputs
+        # Get the right part of the state (useful for tuple states like in LSTM)
+        # (batch_size, 2 * hidden_size)
+        state = utils.rnn_state_trim(self.rnn_type, states)
 
-
-class EncoderRNNLast(EncoderRNN):
-    """
-    Encodes the input using a bidirectional GRU, returning the output
-    from the last RNN steps concatenated.
-    """
-
-    def encode(self, x, x_len, mode, name):
-        _, states = super().rnn_encode(x, x_len, mode, name)
-
-        return states
-
-
-class EncoderRNNAvg(EncoderRNN):
-    """
-    Encodes the input using a bidirectional GRU, returning the
-    average output value in both directions.
-    """
-
-    def encode(self, x, x_len, mode, name):
-        outputs, _ = super().rnn_encode(x, x_len, mode, name)
-
-        # Avoid zero division
-        # (batch, 1)
-        x_len = tf.maximum(x_len, tf.ones_like(x_len))
-        x_len = x_len[:, tf.newaxis]
-
-        # Average all hidden vectors
-        # (batch_size, rnn_hidden_size)
-        return tf.reduce_sum(outputs, 1) / x_len
+        return outputs, x_len, state

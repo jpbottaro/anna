@@ -21,35 +21,6 @@ class MAXxBR(Trainer):
                          name="max_br")
 
 
-class RNNlastxBR(Trainer):
-    def __init__(self, data_dir, labels):
-        super().__init__(data_dir,
-                         labels,
-                         EncoderRNNLast(data_dir, input_limit=300),
-                         DecoderBR(data_dir, len(labels), [1024, 1024]),
-                         name="rnn_last_br")
-
-
-class RNNavgxBR(Trainer):
-    def __init__(self, data_dir, labels):
-        super().__init__(data_dir,
-                         labels,
-                         EncoderRNNAvg(data_dir, input_limit=300),
-                         DecoderBR(data_dir, len(labels), [1024, 1024]),
-                         name="rnn_avg_br")
-
-
-class EncDec(Trainer):
-    def __init__(self, data_dir, labels):
-        super().__init__(data_dir,
-                         labels,
-                         EncoderRNNLast(data_dir, input_limit=300),
-                         DecoderRNNLast(data_dir, labels),
-                         name="enc_dec",
-                         learning_rate=0.00001,
-                         grad_clip=1.0)
-
-
 class CNNxBR(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
@@ -58,3 +29,23 @@ class CNNxBR(Trainer):
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
                          name="cnn_br",
                          batch_size=16)
+
+
+class RNNxBR(Trainer):
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
+                         labels,
+                         EncoderBiRNN(data_dir, input_limit=300),
+                         DecoderBR(data_dir, len(labels), [1024, 1024]),
+                         name="rnn_br")
+
+
+class EncDec(Trainer):
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
+                         labels,
+                         EncoderBiRNN(data_dir, input_limit=300),
+                         DecoderRNN(data_dir, labels),
+                         name="enc_dec",
+                         learning_rate=0.00001,
+                         grad_clip=1.0)

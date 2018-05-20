@@ -14,14 +14,20 @@ class Decoder:
     of predictions.
     """
 
-    def __call__(self, net, labels, mode):
+    def __call__(self, mem, mem_len, mem_fixed, labels, mode):
         """
         Takes `net` as input and predicts the classes. Uses `labels` to
         generate a loss function to optimize the network.
 
         Args:
-            net (tf.Tensor): the input to the decoder (coming from an `Encoder`)
+            mem (tf.Tensor): sequential representation of the input.
+              [batch, sum(len), size]
+            mem_len (tf.Tensor): length of `mem`.
+              [batch]
+            mem_fixed (tf.Tensor): fixed-sized representation of the input.
+              [batch, size]
             labels (tf.Tensor): the expected label output, as a 1/0 vector.
+              [batch, n_labels]
             mode (tf.estimator.ModeKeys): the mode we are on
         """
         raise NotImplementedError
@@ -42,9 +48,10 @@ class DecoderBR(Decoder):
         self.n_classes = n_classes
         self.hidden_units = hidden_units
 
-    def __call__(self, net, labels, mode):
+    def __call__(self, mem, mem_len, mem_fixed, labels, mode):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
 
+        net = mem_fixed
         with tf.name_scope("decoder"):
             # Add all layers of the MLP
             for i, units in enumerate(self.hidden_units):
@@ -79,8 +86,12 @@ class DecoderBR(Decoder):
 
 class DecoderRNN(Decoder):
 
-    def __init__(self, data_dir, label_voc, hidden_size=1024,
-                 max_steps=20, emb_size=300):
+    def __init__(self, data_dir, label_voc,
+                 hidden_size=256,
+                 max_steps=20,
+                 emb_size=300,
+                 rnn_type="lstm",
+                 dropout=0.5):
         """
         Binary Relevance decoder, where each label is an independent
         binary prediction.
@@ -95,6 +106,8 @@ class DecoderRNN(Decoder):
         self.hidden_size = hidden_size
         self.max_steps = max_steps
         self.emb_size = emb_size
+        self.rnn_type = rnn_type
+        self.dropout = dropout
 
         special_labels = ["_PAD_", "_SOS_", "_EOS_"]
         self.voc = special_labels + label_voc
@@ -102,7 +115,7 @@ class DecoderRNN(Decoder):
         self.eos_id = 2
         self.n_special = len(special_labels)
 
-    def __call__(self, net, labels, mode):
+    def __call__(self, mem, mem_len, mem_fixed, labels, mode):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
         is_eval = mode == tf.estimator.ModeKeys.EVAL
 
@@ -111,7 +124,7 @@ class DecoderRNN(Decoder):
             batch_size = tf.shape(labels)[0]
             target, target_len, target_max_len = self.encode_labels(labels)
 
-            cell, cell_init = self.build_cell(net, mode)
+            cell, cell_init = self.build_cell(mem_fixed, batch_size, mode)
             output_layer = tf.layers.Dense(n_labels, use_bias=False)
             emb = tf.get_variable("label_embeddings", [n_labels, self.emb_size])
 
@@ -282,13 +295,12 @@ class DecoderRNN(Decoder):
         # (batch_size, n_labels)
         return predictions[:, self.n_special:]
 
-    def build_cell(self, encoder_output, mode):
-        raise NotImplementedError
+    def build_cell(self, encoder_output, batch_size, mode):
+        cell = utils.rnn_cell(self.rnn_type,
+                              self.hidden_size,
+                              mode,
+                              self.dropout)
+        init = utils.rnn_build_state(cell.zero_state(batch_size, tf.float32),
+                                     encoder_output)
 
-
-class DecoderRNNLast(DecoderRNN):
-    def build_cell(self, encoder_output, mode):
-        dropout = 0.5
-        size = encoder_output.shape[1]
-        cell = utils.rnn_cell(size, dropout, mode, name="dec_rnn")
-        return cell, encoder_output
+        return cell, init

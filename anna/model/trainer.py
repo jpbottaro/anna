@@ -147,8 +147,9 @@ def model_fn(features, labels, mode, params):
             labels = label_idx_to_hot(labels, label_vocab)
 
     with tf.name_scope("model"):
-        net = encoder(features, mode)
-        predictions, loss = decoder(net, labels, mode)
+        mem, mem_len, mem_fixed = encoder(features, mode)
+
+        predictions, loss = decoder(mem, mem_len, mem_fixed, labels, mode)
 
     eval_metric_ops = None
     if mode in [tf.estimator.ModeKeys.EVAL, tf.estimator.ModeKeys.TRAIN]:
