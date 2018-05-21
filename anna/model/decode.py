@@ -306,7 +306,7 @@ class DecoderRNN(Decoder):
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]
-        zero_state = cell.zero_state(batch_size, tf.float32)
+        zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
 
         return cell, init
@@ -317,8 +317,12 @@ class DecoderAttRNN(DecoderRNN):
     def build_cell(self, mem, mem_len, mem_fixed, mode):
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
-                              mode,
-                              self.dropout)
+                              mode)
+
+        # Build initial state based on `mem_fixed`
+        batch_size = tf.shape(mem_fixed)[0]
+        zero_state = cell.zero_state(batch_size, mem.dtype)
+        init = self.bridge(zero_state, mem_fixed)
 
         att_mechanism = tf.contrib.seq2seq.LuongAttention(
             self.hidden_size, mem, mem_len)
@@ -326,11 +330,12 @@ class DecoderAttRNN(DecoderRNN):
         cell = tf.contrib.seq2seq.AttentionWrapper(
             cell,
             att_mechanism,
+            initial_cell_state=init,
             name="attention")
 
-        # Build initial state based on `mem_fixed`
-        batch_size = tf.shape(mem_fixed)[0]
-        zero_state = cell.zero_state(batch_size, tf.float32)
-        init = self.bridge(zero_state, mem_fixed)
+        if mode == tf.estimator.ModeKeys.TRAIN and self.dropout > 0.:
+            cell = tf.nn.rnn_cell.DropoutWrapper(
+                cell,
+                output_keep_prob=1.0 - self.dropout)
 
-        return cell, init
+        return cell, cell.zero_state(batch_size, mem.dtype)

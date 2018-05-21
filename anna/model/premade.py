@@ -36,7 +36,7 @@ class RNNxBR(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300),
+                         EncoderBiRNN(data_dir, input_limit=30),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
                          name="rnn_br")
 
@@ -45,7 +45,7 @@ class EncDec(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300),
+                         EncoderBiRNN(data_dir, input_limit=30),
                          DecoderRNN(data_dir, labels),
                          name="enc_dec",
                          learning_rate=0.00001,
@@ -57,7 +57,7 @@ class AttEncDec(Trainer):
         super().__init__(data_dir,
                          labels,
                          EncoderUniRNN(data_dir, input_limit=30),
-                         DecoderAttRNN(data_dir, labels, bridge=ZeroBridge()),
+                         DecoderAttRNN(data_dir, labels),
                          name="enc_dec_att",
                          learning_rate=0.0001,
                          grad_clip=1.0)
