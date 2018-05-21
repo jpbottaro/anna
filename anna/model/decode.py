@@ -127,7 +127,7 @@ class DecoderRNN(Decoder):
             batch_size = tf.shape(labels)[0]
             target, target_len, target_max_len = self.encode_labels(labels)
 
-            cell, cell_init = self.build_cell(mem_fixed, batch_size, mode)
+            cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
             output_layer = tf.layers.Dense(n_labels, use_bias=False)
             emb = tf.get_variable("label_embeddings", [n_labels, self.emb_size])
 
@@ -298,13 +298,15 @@ class DecoderRNN(Decoder):
         # (batch_size, n_labels)
         return predictions[:, self.n_special:]
 
-    def build_cell(self, encoder_output, batch_size, mode):
+    def build_cell(self, mem, mem_len, mem_fixed, mode):
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
                               mode,
                               self.dropout)
 
+        # Build initial state based on `mem_fixed`
+        batch_size = tf.shape(mem_fixed)[0]
         zero_state = cell.zero_state(batch_size, tf.float32)
-        init = self.bridge(zero_state, encoder_output)
+        init = self.bridge(zero_state, mem_fixed)
 
         return cell, init
