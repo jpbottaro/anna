@@ -199,8 +199,12 @@ def seq_pad(x, size):
         x (tf.Tensor): the padded tensor
           [batch, size, emb_size]
     """
+    emb_size = x.get_shape()[-1].value
     x = tf.pad(x, [[0, 0], [0, size], [0, 0]])
-    return x[:, :size, :]
+    x = x[:, :size, :]
+    x.set_shape([None, None, emb_size])
+
+    return x
 
 
 def seq_roll(x, size):
