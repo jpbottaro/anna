@@ -4,7 +4,6 @@ Inspired by OpenNMT & google/seq2seq
 
 ## Available bridges
 
-@@Bridge
 @@NoBridge
 @@ZeroBridge
 @@DenseBridge
