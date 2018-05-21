@@ -59,5 +59,5 @@ class AttEncDec(Trainer):
                          EncoderUniRNN(data_dir, input_limit=30),
                          DecoderAttRNN(data_dir, labels),
                          name="enc_dec_att",
-                         learning_rate=0.0001,
+                         learning_rate=0.00001,
                          grad_clip=1.0)
