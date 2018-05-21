@@ -167,6 +167,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
     # (batch)
     with tf.name_scope("length"):
         x_len = tf.reduce_sum(x_mask, 1)
+        x_len = tf.to_int32(x_len)
 
     with tf.name_scope("embed"):
         # Convert strings to ids
@@ -300,9 +301,8 @@ class EncoderAvg(Encoder):
     def encode(self, x, x_len, mode, name):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
-        x_len = x_len[:, tf.newaxis]
-        result = tf.reduce_sum(x, 1) / tf.maximum(x_len, tf.ones_like(x_len))
-
+        div = tf.to_float(x_len[:, tf.newaxis])
+        result = tf.reduce_sum(x, 1) / tf.maximum(div, tf.ones_like(div))
         return x, x_len, result
 
 
@@ -380,7 +380,6 @@ class EncoderUniRNN(EncoderRNN):
     """
 
     def encode(self, x, x_len, mode, name):
-        x_len = tf.to_int32(x_len)
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
                               mode,
@@ -408,7 +407,6 @@ class EncoderBiRNN(EncoderRNN):
     """
 
     def encode(self, x, x_len, mode, name):
-        x_len = tf.to_int32(x_len)
         c_fw = utils.rnn_cell(self.rnn_type,
                               self.hidden_size // 2,
                               mode,
