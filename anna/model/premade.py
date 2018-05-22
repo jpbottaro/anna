@@ -47,8 +47,8 @@ class AVGxRNN(Trainer):
                          EncoderAvg(data_dir, input_limit=300),
                          DecoderRNN(data_dir, labels),
                          name="avg_rnn",
-                         learning_rate=0.00001,
-                         grad_clip=5.0)
+                         learning_rate=0.0002,
+                         grad_clip=1.0)
 
 
 class EncDec(Trainer):

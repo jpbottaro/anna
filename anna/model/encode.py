@@ -363,7 +363,7 @@ class EncoderRNN(Encoder):
                  input_limit=None,
                  emb_size=20000,
                  oov_buckets=10000,
-                 rnn_type="lstm",
+                 rnn_type="gru",
                  hidden_size=256,
                  dropout=.5):
         super().__init__(
