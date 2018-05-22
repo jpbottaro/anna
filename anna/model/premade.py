@@ -1,7 +1,6 @@
 from anna.model.trainer import Trainer
 from anna.model.encode import *
 from anna.model.decode import *
-from anna.model.bridge import *
 
 
 class AVGxBR(Trainer):
@@ -39,6 +38,17 @@ class RNNxBR(Trainer):
                          EncoderBiRNN(data_dir, input_limit=30),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
                          name="rnn_br")
+
+
+class AVGxRNN(Trainer):
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
+                         labels,
+                         EncoderAvg(data_dir, input_limit=300),
+                         DecoderRNN(data_dir, labels),
+                         name="avg_rnn",
+                         learning_rate=0.00001,
+                         grad_clip=5.0)
 
 
 class EncDec(Trainer):
