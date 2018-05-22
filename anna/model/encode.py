@@ -31,6 +31,7 @@ class Encoder:
 
     def __init__(self,
                  data_dir,
+                 fixed_embeddings=False,
                  input_names=None,
                  input_limit=None,
                  emb_size=20000,
@@ -53,6 +54,7 @@ class Encoder:
         self.input_names = input_names
         self.input_limit = input_limit
         self.oov_buckets = oov_buckets
+        self.fixed_emb = fixed_embeddings
 
         # Fetch pre-trained word embeddings
         self.words, self.emb = embeddings.fetch_and_parse(data_dir,
@@ -81,7 +83,8 @@ class Encoder:
         """
         emb = tf.get_variable("word_embeddings",
                               self.emb.shape,
-                              initializer=tf.constant_initializer(self.emb))
+                              initializer=tf.constant_initializer(self.emb),
+                              trainable=self.fixed_emb)
 
         with tf.name_scope("encoder"):
             # Encode all inputs
