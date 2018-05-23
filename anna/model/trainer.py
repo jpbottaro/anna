@@ -85,8 +85,7 @@ class Trainer:
         def test_input():
             return input_fn(test_docs, batch_size=self.batch_size)
 
-        i = 0
-        while i < epochs:
+        for i in range(epochs):
             print("Starting epoch #{}".format(i))
             self.estimator.train(input_fn=train_input)
             if val_size:
@@ -95,7 +94,6 @@ class Trainer:
             if test_docs:
                 test_m = self.estimator.evaluate(test_input, name="test")
                 metrics.display("test", test_m)
-            i += 1
 
 
 def input_fn(docs, batch_size=32, shuffle=None, repeat=None):
