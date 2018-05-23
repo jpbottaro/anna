@@ -45,7 +45,7 @@ class AVGxRNN(Trainer):
         super().__init__(data_dir,
                          labels,
                          EncoderAvg(data_dir, input_limit=300),
-                         DecoderRNN(data_dir, labels),
+                         DecoderRNN(data_dir, labels, feed_state=True),
                          name="avg_rnn",
                          learning_rate=0.0002,
                          grad_clip=1.0)

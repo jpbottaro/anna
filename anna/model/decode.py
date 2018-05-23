@@ -87,23 +87,30 @@ class DecoderBR(Decoder):
 
 class DecoderRNN(Decoder):
 
-    def __init__(self, data_dir, label_voc,
+    def __init__(self,
+                 data_dir,
+                 label_voc,
                  hidden_size=256,
                  max_steps=20,
                  emb_size=300,
                  rnn_type="gru",
                  bridge=DenseBridge(),
-                 dropout=0.5):
+                 dropout=0.5,
+                 feed_state=False):
         """
         Binary Relevance decoder, where each label is an independent
         binary prediction.
 
         Args:
-            data_dir (str): path to the data folder
-            label_voc (list[str]): vocabulary of classes to predict
-            hidden_size (int): hidden size of the decoding RNN
-            max_steps (int): max number of steps the decoder can take
-            emb_size (int): size of label embeddings
+            data_dir (str): path to the data folder.
+            label_voc (list[str]): vocabulary of classes to predict.
+            hidden_size (int): hidden size of the decoding RNN.
+            max_steps (int): max number of steps the decoder can take.
+            emb_size (int): size of label embeddings.
+            rnn_type (str): type of rnn (options: "gru" or "lstm")
+            bridge (Bridge): how to hook the input to the RNN state.
+            dropout (float): rate of dropout to apply (0 to disable).
+            feed_state (bool): whether to feed the initial state at every step
         """
         self.hidden_size = hidden_size
         self.max_steps = max_steps
@@ -111,6 +118,7 @@ class DecoderRNN(Decoder):
         self.rnn_type = rnn_type
         self.dropout = dropout
         self.bridge = bridge
+        self.feed_state = feed_state
 
         special_labels = ["_PAD_", "_SOS_", "_EOS_"]
         self.voc = special_labels + label_voc
@@ -133,7 +141,14 @@ class DecoderRNN(Decoder):
 
             # Training
             if is_training:
+                # [batch, steps, emb_size]
                 target_emb = tf.nn.embedding_lookup(emb, target)
+
+                if self.feed_state:
+                    extra_input = tf.tile(mem_fixed[:, tf.newaxis, :],
+                                          [1, tf.shape(target_emb)[1], 1])
+                    target_emb = tf.concat(
+                        [target_emb, extra_input], 2)
 
                 helper = tf.contrib.seq2seq.TrainingHelper(
                     target_emb, target_len)
@@ -149,8 +164,16 @@ class DecoderRNN(Decoder):
                 start_tokens = tf.fill([batch_size], self.sos_id)
                 end_token = self.eos_id
 
+                embed = emb
+                if self.feed_state:
+                    def feeder(ids):
+                        # [batch, emb_size]
+                        ids = tf.nn.embedding_lookup(emb, ids)
+                        return tf.concat([ids, mem_fixed], 1)
+                    embed = feeder
+
                 helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
-                    emb, start_tokens, end_token)
+                    embed, start_tokens, end_token)
 
                 dec = tf.contrib.seq2seq.BasicDecoder(
                     cell,
@@ -165,7 +188,7 @@ class DecoderRNN(Decoder):
                 swap_memory=True,
                 scope=scope)
 
-            # (batch, steps, n_classes)
+            # [batch, steps, n_classes]
             logits = outputs.rnn_output
 
         predictions = self.decode_labels(logits)
@@ -317,7 +340,8 @@ class DecoderAttRNN(DecoderRNN):
     def build_cell(self, mem, mem_len, mem_fixed, mode):
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
-                              mode)
+                              mode,
+                              residual=True)
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]
