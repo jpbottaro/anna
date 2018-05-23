@@ -31,11 +31,11 @@ class Encoder:
 
     def __init__(self,
                  data_dir,
-                 fixed_embeddings=False,
                  input_names=None,
                  input_limit=None,
                  emb_size=20000,
-                 oov_buckets=10000):
+                 oov_buckets=10000,
+                 fixed_embeddings=False):
         """
         Creates an encoder with the given embeddings and maximum size
         for the input.
@@ -46,6 +46,7 @@ class Encoder:
             input_limit (int): maximum size to use from the input sequence
             emb_size (int): nr of embeddings to store (i.e. size of vocabulary)
             oov_buckets (int): nr of buckets to use for out-of-vocabulary words
+            fixed_embeddings (bool): whether the embeddings should be trained
         """
         if not input_names:
             input_names = ["title", "text"]
