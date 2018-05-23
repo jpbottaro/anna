@@ -136,7 +136,7 @@ def model_fn(features, labels, mode, params):
     decoder = params["decoder"]
     label_vocab = params["label_vocab"]
     lr = params["learning_rate"]
-    grad_clip = params["grad_clip"]
+    clipping = params["grad_clip"]
     decay_rate = params["decay_rate"]
     decay_steps = params["decay_steps"]
 
@@ -146,7 +146,6 @@ def model_fn(features, labels, mode, params):
 
     with tf.name_scope("model"):
         mem, mem_len, mem_fixed = encoder(features, mode)
-
         predictions, loss = decoder(mem, mem_len, mem_fixed, labels, mode)
 
     eval_metric_ops = None
@@ -155,7 +154,7 @@ def model_fn(features, labels, mode, params):
 
     train_op = None
     if mode == tf.estimator.ModeKeys.TRAIN:
-        train_op = create_optimizer(loss, lr, grad_clip, decay_rate, decay_steps)
+        train_op = create_optimizer(loss, lr, clipping, decay_rate, decay_steps)
 
     pred = {"predictions": predictions}
     return tf.estimator.EstimatorSpec(mode,
@@ -166,6 +165,18 @@ def model_fn(features, labels, mode, params):
 
 
 def label_idx_to_hot(labels, vocab):
+    """
+    Coverts the labels from a list of ids to a multi-hot vector.
+
+    Args:
+        labels (tf.Tensor): expected labels as a list of ids.
+          [batch, nr_positive_labels]
+        vocab (list[str]): vocabulary of labels
+
+    Returns:
+        labels (tf.Tensor): expected labels as a list of ids.
+          [batch, nr_labels]
+    """
     # Convert strings to ids (pads become -1)
     # (batch, n_positive_labels)
     labels = tf.contrib.lookup.index_table_from_tensor(
