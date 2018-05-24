@@ -21,7 +21,7 @@ class Trainer:
                  encoder,
                  decoder,
                  name="unnamed",
-                 batch_size=32,
+                 batch_size=64,
                  learning_rate=0.001,
                  grad_clip=0.,
                  decay_rate=1.,
