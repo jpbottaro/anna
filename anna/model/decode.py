@@ -90,12 +90,12 @@ class DecoderRNN(Decoder):
     def __init__(self,
                  data_dir,
                  label_voc,
-                 hidden_size=256,
-                 max_steps=20,
+                 hidden_size=1024,
+                 max_steps=30,
                  emb_size=300,
                  rnn_type="gru",
                  bridge=DenseBridge(),
-                 dropout=0.5,
+                 dropout=.2,
                  feed_state=False):
         """
         Binary Relevance decoder, where each label is an independent
@@ -136,7 +136,7 @@ class DecoderRNN(Decoder):
             target, target_len, target_max_len = self.encode_labels(labels)
 
             cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
-            output_layer = tf.layers.Dense(n_labels, use_bias=False)
+            output_layer = DropoutDense(n_labels, is_training, self.dropout)
             emb = tf.get_variable("label_embeddings", [n_labels, self.emb_size])
 
             # Training
@@ -363,3 +363,18 @@ class DecoderAttRNN(DecoderRNN):
                 output_keep_prob=1.0 - self.dropout)
 
         return cell, cell.zero_state(batch_size, mem.dtype)
+
+
+class DropoutDense(tf.layers.Layer):
+
+    def __init__(self, n_labels, training, rate=0.5, name=None, **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.training = training
+        self.dropout = tf.layers.Dropout(rate)
+        self.dense = tf.layers.Dense(n_labels, use_bias=False)
+
+    def call(self, inputs):
+        return self.dense(self.dropout(inputs, self.training))
+
+    def compute_output_shape(self, input_shape):
+        return self.dense.compute_output_shape(input_shape)
