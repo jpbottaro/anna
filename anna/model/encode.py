@@ -85,7 +85,7 @@ class Encoder:
         emb = tf.get_variable("word_embeddings",
                               self.emb.shape,
                               initializer=tf.constant_initializer(self.emb),
-                              trainable=self.fixed_emb)
+                              trainable=not self.fixed_emb)
 
         with tf.name_scope("encoder"):
             # Encode all inputs
@@ -366,7 +366,7 @@ class EncoderRNN(Encoder):
                  oov_buckets=10000,
                  rnn_type="gru",
                  hidden_size=256,
-                 dropout=.5):
+                 dropout=.2):
         super().__init__(
             data_dir, input_names, input_limit, emb_size, oov_buckets)
 
