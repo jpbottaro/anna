@@ -45,7 +45,7 @@ class AVGxRNN(Trainer):
         super().__init__(data_dir,
                          labels,
                          EncoderAvg(data_dir, input_limit=300),
-                         DecoderRNN(data_dir, labels, feed_state=True),
+                         DecoderRNN(data_dir, labels, beam_width=10),
                          name="avg_rnn",
                          learning_rate=0.0002,
                          grad_clip=1.0)
@@ -56,7 +56,7 @@ class EncDec(Trainer):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir, input_limit=30),
-                         DecoderRNN(data_dir, labels),
+                         DecoderRNN(data_dir, labels, beam_width=10),
                          name="enc_dec",
                          learning_rate=0.00001,
                          grad_clip=1.0)
@@ -67,7 +67,7 @@ class AttEncDec(Trainer):
         super().__init__(data_dir,
                          labels,
                          EncoderUniRNN(data_dir, input_limit=30),
-                         DecoderAttRNN(data_dir, labels),
+                         DecoderAttRNN(data_dir, labels, beam_width=10),
                          name="enc_dec_att",
                          learning_rate=0.00001,
                          grad_clip=1.0)

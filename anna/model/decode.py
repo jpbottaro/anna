@@ -92,11 +92,11 @@ class DecoderRNN(Decoder):
                  label_voc,
                  hidden_size=1024,
                  max_steps=30,
-                 emb_size=300,
+                 emb_size=256,
                  rnn_type="gru",
                  bridge=DenseBridge(),
                  dropout=.2,
-                 feed_state=False):
+                 beam_width=0):
         """
         Binary Relevance decoder, where each label is an independent
         binary prediction.
@@ -110,7 +110,7 @@ class DecoderRNN(Decoder):
             rnn_type (str): type of rnn (options: "gru" or "lstm")
             bridge (Bridge): how to hook the input to the RNN state.
             dropout (float): rate of dropout to apply (0 to disable).
-            feed_state (bool): whether to feed the initial state at every step
+            beam_width (int): size of the beam search beam (0 to disable)
         """
         self.hidden_size = hidden_size
         self.max_steps = max_steps
@@ -118,7 +118,7 @@ class DecoderRNN(Decoder):
         self.rnn_type = rnn_type
         self.dropout = dropout
         self.bridge = bridge
-        self.feed_state = feed_state
+        self.beam_width = beam_width
 
         special_labels = ["_PAD_", "_SOS_", "_EOS_"]
         self.voc = special_labels + label_voc
@@ -136,19 +136,13 @@ class DecoderRNN(Decoder):
             target, target_len, target_max_len = self.encode_labels(labels)
 
             cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
-            output_layer = DropoutDense(n_labels, is_training, self.dropout)
+            output_layer = tf.layers.Dense(n_labels)
             emb = tf.get_variable("label_embeddings", [n_labels, self.emb_size])
 
             # Training
             if is_training:
                 # [batch, steps, emb_size]
                 target_emb = tf.nn.embedding_lookup(emb, target)
-
-                if self.feed_state:
-                    extra_input = tf.tile(mem_fixed[:, tf.newaxis, :],
-                                          [1, tf.shape(target_emb)[1], 1])
-                    target_emb = tf.concat(
-                        [target_emb, extra_input], 2)
 
                 helper = tf.contrib.seq2seq.TrainingHelper(
                     target_emb, target_len)
@@ -164,23 +158,25 @@ class DecoderRNN(Decoder):
                 start_tokens = tf.fill([batch_size], self.sos_id)
                 end_token = self.eos_id
 
-                embed = emb
-                if self.feed_state:
-                    def feeder(ids):
-                        # [batch, emb_size]
-                        ids = tf.nn.embedding_lookup(emb, ids)
-                        return tf.concat([ids, mem_fixed], 1)
-                    embed = feeder
+                if self.beam_width > 0:
+                    dec = tf.contrib.seq2seq.BeamSearchDecoder(
+                        cell=cell,
+                        embedding=emb,
+                        start_tokens=start_tokens,
+                        end_token=end_token,
+                        initial_state=cell_init,
+                        beam_width=self.beam_width,
+                        output_layer=output_layer)
+                else:
+                    helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+                        emb, start_tokens, end_token)
 
-                helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
-                    embed, start_tokens, end_token)
-
-                dec = tf.contrib.seq2seq.BasicDecoder(
-                    cell,
-                    helper,
-                    cell_init,
-                    output_layer=output_layer
-                )
+                    dec = tf.contrib.seq2seq.BasicDecoder(
+                        cell,
+                        helper,
+                        cell_init,
+                        output_layer=output_layer
+                    )
 
             outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
                 dec,
@@ -188,8 +184,11 @@ class DecoderRNN(Decoder):
                 swap_memory=True,
                 scope=scope)
 
-            # [batch, steps, n_classes]
-            logits = outputs.rnn_output
+            if not is_training and self.beam_width > 0:
+                logits = tf.one_hot(outputs.predicted_ids[:, :, 0], n_labels)
+            else:
+                # [batch, steps, n_classes]
+                logits = outputs.rnn_output
 
         predictions = self.decode_labels(logits)
 
@@ -332,21 +331,34 @@ class DecoderRNN(Decoder):
         zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
 
+        if mode != tf.estimator.ModeKeys.TRAIN and self.beam_width > 0:
+            init = tf.contrib.seq2seq.tile_batch(init,
+                                                 multiplier=self.beam_width)
+
         return cell, init
 
 
 class DecoderAttRNN(DecoderRNN):
 
     def build_cell(self, mem, mem_len, mem_fixed, mode):
+        is_training = mode == tf.estimator.ModeKeys.TRAIN
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
-                              mode,
-                              residual=True)
+                              mode)
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]
         zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
+
+        if not is_training and self.beam_width > 0:
+            init = tf.contrib.seq2seq.tile_batch(init,
+                                                 multiplier=self.beam_width)
+            mem = tf.contrib.seq2seq.tile_batch(mem,
+                                                multiplier=self.beam_width)
+            mem_len = tf.contrib.seq2seq.tile_batch(mem_len,
+                                                    multiplier=self.beam_width)
+            batch_size *= self.beam_width
 
         att_mechanism = tf.contrib.seq2seq.LuongAttention(
             self.hidden_size, mem, mem_len)
@@ -357,24 +369,9 @@ class DecoderAttRNN(DecoderRNN):
             initial_cell_state=init,
             name="attention")
 
-        if mode == tf.estimator.ModeKeys.TRAIN and self.dropout > 0.:
+        if is_training and self.dropout > 0.:
             cell = tf.nn.rnn_cell.DropoutWrapper(
                 cell,
                 output_keep_prob=1.0 - self.dropout)
 
         return cell, cell.zero_state(batch_size, mem.dtype)
-
-
-class DropoutDense(tf.layers.Layer):
-
-    def __init__(self, n_labels, training, rate=0.5, name=None, **kwargs):
-        super().__init__(name=name, **kwargs)
-        self.training = training
-        self.dropout = tf.layers.Dropout(rate)
-        self.dense = tf.layers.Dense(n_labels, use_bias=False)
-
-    def call(self, inputs):
-        return self.dense(self.dropout(inputs, self.training))
-
-    def compute_output_shape(self, input_shape):
-        return self.dense.compute_output_shape(input_shape)
