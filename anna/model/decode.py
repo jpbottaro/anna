@@ -321,10 +321,14 @@ class DecoderRNN(Decoder):
         return predictions[:, self.n_special:]
 
     def build_cell(self, mem, mem_len, mem_fixed, mode):
+        is_training = mode == tf.estimator.ModeKeys.TRAIN
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
                               mode,
                               self.dropout)
+
+        # Add dropout to mem_fixed
+        mem_fixed = tf.layers.dropout(mem_fixed, training=is_training)
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]
@@ -345,6 +349,9 @@ class DecoderAttRNN(DecoderRNN):
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
                               mode)
+
+        # Add dropout to mem_fixed
+        mem_fixed = tf.layers.dropout(mem_fixed, training=is_training)
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]

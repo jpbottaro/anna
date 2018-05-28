@@ -44,10 +44,14 @@ class AVGxRNN(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
-                         EncoderAvg(data_dir, input_limit=300),
-                         DecoderRNN(data_dir, labels, beam_width=10),
+                         EncoderAvg(data_dir,
+                                    emb_size=100000,
+                                    oov_buckets=0,
+                                    fixed_embeddings=True,
+                                    input_limit=300),
+                         DecoderRNN(data_dir, labels, beam_width=12),
                          name="avg_rnn",
-                         learning_rate=0.0002,
+                         learning_rate=0.0001,
                          grad_clip=1.0)
 
 
