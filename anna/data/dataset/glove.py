@@ -1,21 +1,22 @@
-"""Reads the fasttext word embeddings
+"""Reads the GloVe word embeddings
 
-Visit: https://fasttext.cc/docs/en/english-vectors.html#format"""
+Visit: https://nlp.stanford.edu/projects/glove/"""
 
 import os
 import zipfile
 import numpy as np
 import anna.data.utils as utils
 
-DESTINATION = "fasttext"
-NAME = "wiki-news-300d-1M-subword.vec"
+DESTINATION = "glove"
+NAME = "glove.840B.300d"
+TXT_NAME = NAME + ".txt"
 ZIP_NAME = NAME + ".zip"
-URL = "https://s3-us-west-1.amazonaws.com/fasttext-vectors/" + ZIP_NAME
+URL = "http://nlp.stanford.edu/data/" + ZIP_NAME
 
 
 def fetch_and_parse(data_dir, voc_size=None):
     """
-    Fetches and parses the fasttext word embeddings dataset. The dataset is
+    Fetches and parses the GloVe word embeddings dataset. The dataset is
     also cached as a pickle for further calls.
 
     Args:
@@ -29,12 +30,12 @@ def fetch_and_parse(data_dir, voc_size=None):
     return parse(fetch(data_dir), voc_size)
 
 
-def parse(fasttext_dir, voc_size):
+def parse(glove_dir, voc_size):
     """
-    Parses the fasttext word embeddings.
+    Parses the glove word embeddings.
 
     Args:
-        fasttext_dir (str): absolute path to the extracted word embeddings
+        glove_dir (str): absolute path to the extracted word embeddings
         voc_size (int): maximum size of the vocabulary, None for no limit
 
     Returns:
@@ -43,15 +44,9 @@ def parse(fasttext_dir, voc_size):
     """
     voc = []
     emb = []
-    first = True
-    fasttext_path = os.path.join(fasttext_dir, NAME)
-    with open(fasttext_path) as f:
+    glove_path = os.path.join(glove_dir, TXT_NAME)
+    with open(glove_path) as f:
         for line in f:
-            # First line contains # words and embedding sizes, skip
-            if first:
-                first = False
-                continue
-
             parts = line.split(" ")
             if parts[0] not in voc:
                 voc.append(parts[0])
@@ -64,24 +59,24 @@ def parse(fasttext_dir, voc_size):
 
 def fetch(data_dir):
     """
-    Fetches and extracts pretrained fastText word vectors.
+    Fetches and extracts pretrained GloVe word vectors.
 
     Args:
         data_dir (str): absolute path to the folder where datasets are stored
 
     Returns:
-        fasttext_dir (str): absolute path to the folder where datasets are stored
+        glove_dir (str): absolute path to the folder where datasets are stored
     """
     # Create folder
-    fasttext_dir = os.path.join(data_dir, DESTINATION)
-    utils.create_folder(fasttext_dir)
+    glove_dir = os.path.join(data_dir, DESTINATION)
+    utils.create_folder(glove_dir)
 
     # Extract annotations if not previously done
-    fasttext_file = os.path.join(fasttext_dir, NAME)
-    fasttext_zip = os.path.join(fasttext_dir, ZIP_NAME)
-    if not os.path.exists(fasttext_file):
-        utils.urlretrieve(URL, fasttext_zip)
-        with zipfile.ZipFile(fasttext_zip, "r") as fasttext:
-            fasttext.extractall(fasttext_dir)
+    glove_file = os.path.join(glove_dir, TXT_NAME)
+    glove_zip = os.path.join(glove_dir, ZIP_NAME)
+    if not os.path.exists(glove_file):
+        utils.urlretrieve(URL, glove_zip)
+        with zipfile.ZipFile(glove_zip, "r") as glove:
+            glove.extractall(glove_dir)
 
-    return fasttext_dir
+    return glove_dir

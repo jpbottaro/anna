@@ -7,6 +7,7 @@ import pickle
 import random
 import urllib.request
 import tensorflow as tf
+import numpy as np
 
 TRAIN_PATH = "train.tfrecords"
 TEST_PATH = "test.tfrecords"
@@ -48,6 +49,33 @@ def tokenize(text,
     text = text.translate(separator)
 
     return [t for t in text.split() if t]
+
+
+def add_special_tokens(voc, emb):
+    """
+    Extends a vocabulary with special tokens, like padding or unknowns.
+
+    Args:
+        voc (list[str]): list of words, matching the index in `emb`
+        emb (numpy.array): array of embeddings for each word in `voc`
+
+    Returns:
+        new_voc (list[str]): same as `voc`, with special tokens added (e.g.
+          "_PAD_" and "_UNK_").
+        new_emb (numpy.array): same as `emb`, with special tokens embeddings.
+    """
+    # Reserve 0 for special padding token, 1 for unknown
+    voc = ["_PAD_", "_UNK_"] + voc
+
+    # Make padding token be all zeros
+    pad_emb = np.zeros_like(emb[0])
+    pad_emb = pad_emb[np.newaxis, :]
+
+    # And unknown be an average of all embeddings
+    unk_emb = np.sum(emb, 0) / emb.shape[0]
+    unk_emb = unk_emb[np.newaxis, :]
+
+    return voc, np.concatenate([pad_emb, unk_emb, emb], axis=0)
 
 
 def reporthook(blocknum, blocksize, totalsize):
