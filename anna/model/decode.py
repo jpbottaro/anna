@@ -144,6 +144,11 @@ class DecoderRNN(Decoder):
                 # [batch, steps, emb_size]
                 target_emb = tf.nn.embedding_lookup(emb, target)
 
+                # Add dropout to embeddings
+                target_emb = tf.layers.dropout(target_emb,
+                                               rate=self.dropout,
+                                               training=is_training)
+
                 helper = tf.contrib.seq2seq.TrainingHelper(
                     target_emb, target_len)
 
@@ -328,7 +333,9 @@ class DecoderRNN(Decoder):
                               self.dropout)
 
         # Add dropout to mem_fixed
-        mem_fixed = tf.layers.dropout(mem_fixed, training=is_training)
+        mem_fixed = tf.layers.dropout(mem_fixed,
+                                      rate=self.dropout,
+                                      training=is_training)
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]
@@ -351,7 +358,9 @@ class DecoderAttRNN(DecoderRNN):
                               mode)
 
         # Add dropout to mem_fixed
-        mem_fixed = tf.layers.dropout(mem_fixed, training=is_training)
+        mem_fixed = tf.layers.dropout(mem_fixed,
+                                      rate=self.dropout,
+                                      training=is_training)
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]

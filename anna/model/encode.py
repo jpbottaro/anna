@@ -20,7 +20,7 @@ unit).
 import numpy as np
 import tensorflow as tf
 import anna.model.utils as utils
-import anna.data.dataset.fasttext as embeddings
+import anna.data.dataset.glove as embeddings
 
 
 class Encoder:
@@ -194,6 +194,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
 
 def seq_pad(x, size):
     """
+    Pads a sequential tensor with zeros up to `size` steps.
 
     Args:
         x (tf.Tensor): the tensor we want to pad
@@ -236,7 +237,7 @@ def seq_roll(x, size):
     # size = 2
     cols, rows = tf.meshgrid(tf.range(steps), tf.range(batch_size))
 
-    # Substract the amount we want to roll
+    # Subtract the amount we want to roll
     # [-2 -1 0 1]
     cols -= tf.expand_dims(size, 1)
 
@@ -312,7 +313,7 @@ class EncoderAvg(Encoder):
 
 class EncoderMax(Encoder):
     """
-    Encodes the input taking the max of each of its word embedding dimentions.
+    Encodes the input taking the max of each of its word embedding dimensions.
     """
 
     def encode(self, x, x_len, mode, name):
