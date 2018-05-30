@@ -45,15 +45,13 @@ class AVGxRNN(Trainer):
         super().__init__(data_dir,
                          labels,
                          EncoderAvg(data_dir,
-                                    emb_size=100000,
-                                    oov_buckets=0,
                                     fixed_embeddings=True,
                                     input_limit=300),
                          DecoderRNN(data_dir,
                                     labels,
                                     beam_width=12),
                          name="avg_rnn",
-                         learning_rate=0.0002,
+                         learning_rate=0.0001,
                          grad_clip=1.0)
 
 
@@ -61,10 +59,14 @@ class EncDec(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=30),
-                         DecoderRNN(data_dir, labels, beam_width=10),
+                         EncoderBiRNN(data_dir,
+                                      fixed_embeddings=True,
+                                      input_limit=300),
+                         DecoderRNN(data_dir,
+                                    labels,
+                                    beam_width=12),
                          name="enc_dec",
-                         learning_rate=0.00001,
+                         learning_rate=0.0001,
                          grad_clip=1.0)
 
 
@@ -72,8 +74,12 @@ class AttEncDec(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
-                         EncoderUniRNN(data_dir, input_limit=30),
-                         DecoderAttRNN(data_dir, labels, beam_width=10),
+                         EncoderUniRNN(data_dir,
+                                       fixed_embeddings=True,
+                                       input_limit=300),
+                         DecoderAttRNN(data_dir,
+                                       labels,
+                                       beam_width=12),
                          name="enc_dec_att",
-                         learning_rate=0.00001,
+                         learning_rate=0.0001,
                          grad_clip=1.0)

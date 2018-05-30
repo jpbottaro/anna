@@ -33,8 +33,8 @@ class Encoder:
                  data_dir,
                  input_names=None,
                  input_limit=None,
-                 emb_size=20000,
-                 oov_buckets=10000,
+                 emb_size=50000,
+                 oov_buckets=0,
                  fixed_embeddings=False):
         """
         Creates an encoder with the given embeddings and maximum size
@@ -89,9 +89,9 @@ class Encoder:
 
         with tf.name_scope("encoder"):
             # Encode all inputs
-            memory = []
-            memory_len = []
-            memory_fixed = []
+            mem = []
+            mem_len = []
+            mem_fixed = []
             for name in self.input_names:
                 with tf.name_scope("input_" + name):
                     x, x_len = get_input(features,
@@ -100,23 +100,25 @@ class Encoder:
                                          emb,
                                          self.input_limit,
                                          self.oov_buckets)
-                    mem, mem_len, mem_fixed = self.encode(x, x_len, mode, name)
+
+                    m, m_len, m_fixed = self.encode(x, x_len, mode, name)
+
                     # (batch, seq_len, size)
-                    memory.append(mem)
+                    mem.append(m)
                     # (batch)
-                    memory_len.append(mem_len)
+                    mem_len.append(m_len)
                     # (batch, emb_size)
-                    memory_fixed.append(mem_fixed)
+                    mem_fixed.append(m_fixed)
 
             # Concatenate variable memory:
             # (batch, sum(seq_len), size)
-            final_memory, final_memory_len = seq_concat(memory, memory_len)
+            final_mem, final_mem_len = utils.seq_concat(mem, mem_len)
 
             # Concatenate fixed memory:
             # (batch, len(input_names) * emb_size)
-            final_memory_fixed = tf.concat(memory_fixed, -1)
+            final_mem_fixed = tf.concat(mem_fixed, -1)
 
-            return final_memory, final_memory_len, final_memory_fixed
+            return final_mem, final_mem_len, final_mem_fixed
 
     def encode(self, x, x_len, mode, name):
         """
@@ -192,112 +194,6 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
     return x, x_len
 
 
-def seq_pad(x, size):
-    """
-    Pads a sequential tensor with zeros up to `size` steps.
-
-    Args:
-        x (tf.Tensor): the tensor we want to pad
-          [batch, steps, emb_size]
-        size (int): size to pad
-
-    Returns:
-        x (tf.Tensor): the padded tensor
-          [batch, size, emb_size]
-    """
-    emb_size = x.get_shape()[-1].value
-    x = tf.pad(x, [[0, 0], [0, size], [0, 0]])
-    x = x[:, :size, :]
-    x.set_shape([None, None, emb_size])
-
-    return x
-
-
-def seq_roll(x, size):
-    """
-    Rolls the input `x` by `size` positions to the right, wrapping around.
-
-    Similar to OpenNMT's roll_sequence.
-
-    Args:
-        x (tf.Tensor): the tensor we want to roll
-          [batch, steps, emb_size]
-        size (tf.Tensor): how many positions we want to roll `x` to the right
-          [batch]
-
-    Returns:
-        y (tf.Tensor): the rolled tensor
-          [batch, steps, emb_size]
-    """
-    batch_size = tf.shape(x)[0]
-    steps = tf.shape(x)[1]
-
-    # Build grid with all indices in the tensor `x`
-    # x = [1 3 3 7]
-    # size = 2
-    cols, rows = tf.meshgrid(tf.range(steps), tf.range(batch_size))
-
-    # Subtract the amount we want to roll
-    # [-2 -1 0 1]
-    cols -= tf.expand_dims(size, 1)
-
-    # Take the remainder of the division. This returns the rolled indices, e.g.
-    # [2 3 0 1]
-    cols = tf.floormod(cols, steps)
-
-    # Build back the indices using the rolled targets
-    indices = tf.stack([rows, cols], axis=-1)
-
-    # Shuffle the input with the constructed indices
-    return tf.gather_nd(x, indices)
-
-
-def seq_concat(memory, memory_len):
-    """
-    Concatenates a list of sequential memories into a single sequence.
-
-    Similar to OpenNMT's ConcatReducer.
-
-    Args:
-        memory (list[tf.Tensor]): a list of sequential tensors to concatenate.
-          [batch, len, size]
-        memory_len (list[tf.Tensor]): the length tensor in `memory`.
-          [batch]
-
-    Returns:
-        final_mem (tf.Tensor): sequential representation of the input.
-          [batch, sum(len), size]
-        final_mem_len (tf.Tensor): length of `final_mem`.
-          [batch]
-    """
-    # Calculate final length of each instance in the batch
-    # [batch]
-    final_len = tf.add_n(memory_len)
-
-    # Calculate largest instance
-    max_len = tf.reduce_max(final_len)
-
-    # Pad memory to the largest combined sequence
-    # list([batch, max_len, emb_size])
-    memory = [seq_pad(m, max_len) for m in memory]
-
-    # Build padded final memory
-    # [batch, max_len, emb_size]
-    final_mem = None
-    accum_len = None
-
-    # Roll and accumulate sequences to obtain the final concatenation
-    for x, x_len in zip(memory, memory_len):
-        if final_mem is None:
-            final_mem = x
-            accum_len = x_len
-        else:
-            final_mem += seq_roll(x, accum_len)
-            accum_len += x_len
-
-    return final_mem, final_len
-
-
 class EncoderAvg(Encoder):
     """
     Encodes the input as an average of its word embeddings.
@@ -361,15 +257,12 @@ class EncoderRNN(Encoder):
 
     def __init__(self,
                  data_dir,
-                 input_names=None,
-                 input_limit=None,
-                 emb_size=20000,
-                 oov_buckets=10000,
                  rnn_type="gru",
                  hidden_size=256,
-                 dropout=.2):
-        super().__init__(
-            data_dir, input_names, input_limit, emb_size, oov_buckets)
+                 dropout=.2,
+                 *args,
+                 **kwargs):
+        super().__init__(data_dir, *args, **kwargs)
 
         self.hidden_size = hidden_size
         self.dropout = dropout

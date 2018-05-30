@@ -46,6 +46,8 @@ class DecoderBR(Decoder):
             n_classes (int): number of classes to predict
             hidden_units (list[int]): size of each layer of the FFNN
         """
+        _ = data_dir
+
         self.n_classes = n_classes
         self.hidden_units = hidden_units
 
@@ -112,6 +114,8 @@ class DecoderRNN(Decoder):
             dropout (float): rate of dropout to apply (0 to disable).
             beam_width (int): size of the beam search beam (0 to disable).
         """
+        _ = data_dir
+
         self.hidden_size = hidden_size
         self.max_steps = max_steps
         self.emb_size = emb_size

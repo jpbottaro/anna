@@ -18,7 +18,7 @@ if __name__ == "__main__":
     train_docs, test_docs, unused_docs, labels = data.fetch_and_parse(data_dir)
 
     # Create trainer for feedforward model
-    model = models.AVGxRNN(data_dir, labels)
+    model = models.AVGxBR(data_dir, labels)
 
     # Train model
     model.train(train_docs, test_docs)
