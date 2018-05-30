@@ -96,7 +96,8 @@ class DecoderRNN(Decoder):
                  rnn_type="gru",
                  bridge=DenseBridge(),
                  dropout=.2,
-                 beam_width=0):
+                 beam_width=0,
+                 propagate_output=True):
         """
         Binary Relevance decoder, where each label is an independent
         binary prediction.
@@ -107,10 +108,11 @@ class DecoderRNN(Decoder):
             hidden_size (int): hidden size of the decoding RNN.
             max_steps (int): max number of steps the decoder can take.
             emb_size (int): size of label embeddings.
-            rnn_type (str): type of rnn (options: "gru" or "lstm")
+            rnn_type (str): type of rnn (options: "gru" or "lstm").
             bridge (Bridge): how to hook the input to the RNN state.
             dropout (float): rate of dropout to apply (0 to disable).
-            beam_width (int): size of the beam search beam (0 to disable)
+            beam_width (int): size of the beam search beam (0 to disable).
+            propagate_output (bool): whether outputs should propagate forward.
         """
         self.hidden_size = hidden_size
         self.max_steps = max_steps
@@ -119,6 +121,7 @@ class DecoderRNN(Decoder):
         self.dropout = dropout
         self.bridge = bridge
         self.beam_width = beam_width
+        self.propagate_output = propagate_output
 
         special_labels = ["_PAD_", "_SOS_", "_EOS_"]
         self.voc = special_labels + label_voc
@@ -139,15 +142,13 @@ class DecoderRNN(Decoder):
             output_layer = tf.layers.Dense(n_labels)
             emb = tf.get_variable("label_embeddings", [n_labels, self.emb_size])
 
+            if not self.propagate_output:
+                emb = tf.zeros([n_labels, self.emb_size])
+
             # Training
             if is_training:
                 # [batch, steps, emb_size]
                 target_emb = tf.nn.embedding_lookup(emb, target)
-
-                # Add dropout to embeddings
-                target_emb = tf.layers.dropout(target_emb,
-                                               rate=self.dropout,
-                                               training=is_training)
 
                 helper = tf.contrib.seq2seq.TrainingHelper(
                     target_emb, target_len)

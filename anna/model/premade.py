@@ -49,7 +49,10 @@ class AVGxRNN(Trainer):
                                     oov_buckets=0,
                                     fixed_embeddings=True,
                                     input_limit=300),
-                         DecoderRNN(data_dir, labels, beam_width=12),
+                         DecoderRNN(data_dir,
+                                    labels,
+                                    propagate_output=False,
+                                    beam_width=12),
                          name="avg_rnn",
                          learning_rate=0.0002,
                          grad_clip=1.0)
