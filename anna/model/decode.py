@@ -96,8 +96,7 @@ class DecoderRNN(Decoder):
                  rnn_type="gru",
                  bridge=DenseBridge(),
                  dropout=.2,
-                 beam_width=0,
-                 propagate_output=True):
+                 beam_width=0):
         """
         Binary Relevance decoder, where each label is an independent
         binary prediction.
@@ -112,7 +111,6 @@ class DecoderRNN(Decoder):
             bridge (Bridge): how to hook the input to the RNN state.
             dropout (float): rate of dropout to apply (0 to disable).
             beam_width (int): size of the beam search beam (0 to disable).
-            propagate_output (bool): whether outputs should propagate forward.
         """
         self.hidden_size = hidden_size
         self.max_steps = max_steps
@@ -121,7 +119,6 @@ class DecoderRNN(Decoder):
         self.dropout = dropout
         self.bridge = bridge
         self.beam_width = beam_width
-        self.propagate_output = propagate_output
 
         special_labels = ["_PAD_", "_SOS_", "_EOS_"]
         self.voc = special_labels + label_voc
@@ -136,22 +133,25 @@ class DecoderRNN(Decoder):
         with tf.variable_scope("decoder") as scope:
             n_labels = len(self.voc)
             batch_size = tf.shape(labels)[0]
+
             target, target_len, target_max_len = self.encode_labels(labels)
 
-            cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
             output_layer = tf.layers.Dense(n_labels)
+            cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
             emb = tf.get_variable("label_embeddings", [n_labels, self.emb_size])
-
-            if not self.propagate_output:
-                emb = tf.zeros([n_labels, self.emb_size])
 
             # Training
             if is_training:
+                # Shift targets to the right, adding the start token
+                # [batch, steps]
+                start_tokens = tf.fill([batch_size, 1], self.sos_id)
+                inputs = tf.concat([start_tokens, target[:, :-1]], axis=1)
+
                 # [batch, steps, emb_size]
-                target_emb = tf.nn.embedding_lookup(emb, target)
+                inputs = tf.nn.embedding_lookup(emb, inputs)
 
                 helper = tf.contrib.seq2seq.TrainingHelper(
-                    target_emb, target_len)
+                    inputs, target_len)
 
                 dec = tf.contrib.seq2seq.BasicDecoder(
                     cell,
@@ -162,20 +162,19 @@ class DecoderRNN(Decoder):
             # Inference
             else:
                 start_tokens = tf.fill([batch_size], self.sos_id)
-                end_token = self.eos_id
 
                 if self.beam_width > 0:
                     dec = tf.contrib.seq2seq.BeamSearchDecoder(
                         cell=cell,
                         embedding=emb,
                         start_tokens=start_tokens,
-                        end_token=end_token,
+                        end_token=self.eos_id,
                         initial_state=cell_init,
                         beam_width=self.beam_width,
                         output_layer=output_layer)
                 else:
                     helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
-                        emb, start_tokens, end_token)
+                        emb, start_tokens, self.eos_id)
 
                     dec = tf.contrib.seq2seq.BasicDecoder(
                         cell,

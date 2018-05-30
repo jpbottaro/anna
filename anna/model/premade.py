@@ -51,7 +51,6 @@ class AVGxRNN(Trainer):
                                     input_limit=300),
                          DecoderRNN(data_dir,
                                     labels,
-                                    propagate_output=False,
                                     beam_width=12),
                          name="avg_rnn",
                          learning_rate=0.0002,
