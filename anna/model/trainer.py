@@ -214,7 +214,7 @@ def create_optimizer(loss, learning_rate, max_norm, decay_rate, decay_steps):
 
     tf.summary.scalar("misc/learning_rate", learning_rate)
 
-    opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    opt = tf.contrib.opt.LazyAdamOptimizer(learning_rate=learning_rate)
     grad, var = zip(*opt.compute_gradients(loss))
 
     if max_norm > 0.:
