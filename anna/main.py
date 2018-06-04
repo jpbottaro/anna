@@ -17,8 +17,13 @@ if __name__ == "__main__":
     # Fetch and preprocess dataset
     train_docs, test_docs, unused_docs, labels = data.fetch_and_parse(data_dir)
 
-    # Create trainer for feedforward model
-    model = models.AVGxBR(data_dir, labels)
+    for builder in models.ALL:
+        # Create default trainer
+        model = builder(data_dir, labels)
 
-    # Train model
-    model.train(train_docs, test_docs)
+        # Train and evaluate
+        print("Model: {}".format(model))
+        model.train(train_docs, test_docs)
+
+        # Delete to save memory
+        del model

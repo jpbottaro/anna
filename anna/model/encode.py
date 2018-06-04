@@ -33,8 +33,8 @@ class Encoder:
                  data_dir,
                  input_names=None,
                  input_limit=None,
-                 emb_size=50000,
-                 oov_buckets=0,
+                 emb_size=200000,
+                 oov_buckets=10000,
                  fixed_embeddings=False):
         """
         Creates an encoder with the given embeddings and maximum size

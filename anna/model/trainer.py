@@ -96,7 +96,7 @@ class Trainer:
                 metrics.display("test", test_m)
 
 
-def input_fn(docs, batch_size=32, shuffle=None, repeat=None):
+def input_fn(docs, batch_size=64, shuffle=None, repeat=None):
     with tf.name_scope("input_processing"):
         def pad_empty(doc, labels):
             doc = {k: tf.cond(tf.equal(tf.shape(v)[0], 0),

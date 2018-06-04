@@ -3,6 +3,11 @@
 ## Binary relevance decoder (independent binary classifier per label).
 
 @@DecoderBR
+
+## Sequence prediction decoder (one label prediction per timestep).
+
+@@DecoderRNN
+@@DecoderAttRNN
 """
 import tensorflow as tf
 import anna.model.utils as utils
