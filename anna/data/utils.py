@@ -3,6 +3,8 @@
 import os
 import re
 import sys
+import zipfile
+import tarfile
 import pickle
 import random
 import urllib.request
@@ -78,12 +80,58 @@ def add_special_tokens(voc, emb):
     return voc, np.concatenate([pad_emb, unk_emb, emb], axis=0)
 
 
+def fetch(url, file_path, result_path=None):
+    """
+    Fetches the given `url` if it's not already present in `data_dir/file_name`.
+    Extracts the result according to the extention of the `file_path` (e.g.
+    if the file ends with ".zip", extracts it with zipfile).
+
+    If `result_path` exists, no fetching/extracting is performed (if None, this
+    defaults to `file_path`).
+
+    Args:
+        url (str): the url to fetch
+        file_path (str): the path where to save the results of the url
+        result_path (str): the path to check for decompressed files
+
+    Returns:
+        folder (str): the folder where the contents of the url where stored
+    """
+    if result_path is None:
+        result_path = file_path
+
+    folder_name = os.path.dirname(file_path)
+
+    # Fetch and extract annotations if not previously done
+    if not os.path.exists(result_path):
+        create_folder(folder_name)
+
+        if not os.path.exists(file_path):
+            urlretrieve(url, file_path)
+
+        if ".zip" in file_path:
+            with zipfile.ZipFile(file_path, "r") as data:
+                data.extractall(folder_name)
+        elif ".tgz" in file_path or ".tar.gz" in file_path:
+            with tarfile.open(file_path, "r:gz") as data:
+                data.extractall(folder_name)
+        else:
+            raise ValueError("Unknown file type: {}".format(file_path))
+
+    return folder_name
+
+
 def reporthook(blocknum, blocksize, totalsize):
     """
     A hook that conforms with 'urllib.request.urlretrieve()' interface.
 
     It reports in stdout the current progress of the download, including
     a progress bar.
+
+    Args:
+        blocknum (int): block number
+        blocksize (float): size of the block
+        totalsize (float): total size of the download
     """
 
     readsofar = blocknum * blocksize
@@ -109,6 +157,10 @@ def urlretrieve(url, path):
     a progress bar.
 
     If 'path' exists, doesn't download anything.
+
+    Args:
+        url (str): the url to retrieve
+        path (str): the path where to save the result of the url
     """
     if os.path.exists(path):
         print("Skipping: " + url)
@@ -122,6 +174,9 @@ def create_folder(folder):
     Creates the given folder in the filesystem.
 
     The whole path is created, just like 'mkdir -p' would do.
+
+    Args:
+        folder (str): the path to the folder
     """
 
     try:

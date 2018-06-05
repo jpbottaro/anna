@@ -3,7 +3,6 @@
 Visit: https://fasttext.cc/docs/en/english-vectors.html#format"""
 
 import os
-import zipfile
 import numpy as np
 import anna.data.utils as utils
 
@@ -72,16 +71,6 @@ def fetch(data_dir):
     Returns:
         fasttext_dir (str): absolute path to the folder where datasets are stored
     """
-    # Create folder
-    fasttext_dir = os.path.join(data_dir, DESTINATION)
-    utils.create_folder(fasttext_dir)
-
-    # Extract annotations if not previously done
-    fasttext_file = os.path.join(fasttext_dir, NAME)
-    fasttext_zip = os.path.join(fasttext_dir, ZIP_NAME)
-    if not os.path.exists(fasttext_file):
-        utils.urlretrieve(URL, fasttext_zip)
-        with zipfile.ZipFile(fasttext_zip, "r") as fasttext:
-            fasttext.extractall(fasttext_dir)
-
-    return fasttext_dir
+    file_path = os.path.join(data_dir, DESTINATION, ZIP_NAME)
+    result_path = os.path.join(data_dir, DESTINATION, NAME)
+    return utils.fetch(URL, file_path, result_path)

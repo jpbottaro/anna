@@ -3,7 +3,6 @@
 Visit: https://nlp.stanford.edu/projects/glove/"""
 
 import os
-import zipfile
 import numpy as np
 import anna.data.utils as utils
 
@@ -67,16 +66,6 @@ def fetch(data_dir):
     Returns:
         glove_dir (str): absolute path to the folder where datasets are stored
     """
-    # Create folder
-    glove_dir = os.path.join(data_dir, DESTINATION)
-    utils.create_folder(glove_dir)
-
-    # Extract annotations if not previously done
-    glove_file = os.path.join(glove_dir, TXT_NAME)
-    glove_zip = os.path.join(glove_dir, ZIP_NAME)
-    if not os.path.exists(glove_file):
-        utils.urlretrieve(URL, glove_zip)
-        with zipfile.ZipFile(glove_zip, "r") as glove:
-            glove.extractall(glove_dir)
-
-    return glove_dir
+    file_path = os.path.join(data_dir, DESTINATION, ZIP_NAME)
+    txt_path = os.path.join(data_dir, DESTINATION, TXT_NAME)
+    return utils.fetch(URL, file_path, txt_path)

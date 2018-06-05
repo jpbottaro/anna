@@ -9,23 +9,21 @@ Parses and splits according to:
 Visit: https://archive.ics.uci.edu/ml/datasets/Reuters-21578+Text+Categorization+Collection"""  # noqa
 
 import os
-import tarfile
 import anna.data.utils as utils
 from anna.data.api import Doc
 from collections import Counter
 from bs4 import BeautifulSoup
 
-NAME = "reuters21578"
-FILE = NAME + ".tar.gz"
+DESTINATION = "reuters21578"
+TAR_NAME = DESTINATION + ".tar.gz"
 URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/" \
-    + "reuters21578-mld/" + FILE
+    + "reuters21578-mld/" + TAR_NAME
 REUTER_SGML = "reut2-{:03}.sgm"
 
 
 def fetch_and_parse(data_dir):
     """
-    Fetches and parses the Reuters-21578 dataset. The dataset is also cached
-    as a pickle for further calls.
+    Fetches and parses the Reuters-21578 dataset.
 
     Args:
         data_dir (str): absolute path to the dir where datasets are stored
@@ -33,10 +31,10 @@ def fetch_and_parse(data_dir):
     Returns:
         train_docs (tf.data.Dataset): annotated articles for training
         test_docs (tf.data.Dataset): annotated articles for testing
-        unused_docs (tf.data.Dataset): unused docs acording to the "ModApte" split
+        unused_docs (tf.data.Dataset): unused docs following the "ModApte" split
         labels (list[str]): final list of labels, from most to least frequent
     """
-    reuters_dir = os.path.join(data_dir, NAME)
+    reuters_dir = os.path.join(data_dir, DESTINATION)
 
     return utils.mlc_tfrecords(reuters_dir, lambda: parse(fetch(data_dir)))
 
@@ -154,17 +152,7 @@ def fetch(data_dir):
         data_dir (str): absolute path to the folder where datasets are stored
 
     Returns:
-        reutersl_dir (str): absolute path to the folder where reuters is stored
+        reuters_dir (str): absolute path to the folder where reuters is stored
     """
-    # Create folder
-    reuters_dir = os.path.join(data_dir, NAME)
-    utils.create_folder(reuters_dir)
-
-    # Extract annotations if not previously done
-    reuters_file = os.path.join(reuters_dir, FILE)
-    if not os.path.exists(reuters_file):
-        utils.urlretrieve(URL, reuters_file)
-        with tarfile.open(reuters_file, "r:gz") as reuters:
-            reuters.extractall(reuters_dir)
-
-    return reuters_dir
+    file_path = os.path.join(data_dir, DESTINATION, TAR_NAME)
+    return utils.fetch(URL, file_path)
