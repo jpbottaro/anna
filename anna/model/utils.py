@@ -20,9 +20,9 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
     dropout = dropout if mode == tf.estimator.ModeKeys.TRAIN else 0.0
 
     if rnn_type == "lstm":
-        cell = tf.nn.rnn_cell.LSTMCell(num_units, reuse=tf.AUTO_REUSE)
+        cell = tf.nn.rnn_cell.LSTMCell(num_units)
     elif rnn_type == "gru":
-        cell = tf.nn.rnn_cell.GRUCell(num_units, reuse=tf.AUTO_REUSE)
+        cell = tf.nn.rnn_cell.GRUCell(num_units)
     else:
         raise ValueError("Unknown rnn_type '{}'".format(rnn_type))
 

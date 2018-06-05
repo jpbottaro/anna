@@ -93,7 +93,7 @@ class Encoder:
             mem_len = []
             mem_fixed = []
             for name in self.input_names:
-                with tf.name_scope("input_" + name):
+                with tf.variable_scope("input_" + name):
                     x, x_len = get_input(features,
                                          name,
                                          self.words,
