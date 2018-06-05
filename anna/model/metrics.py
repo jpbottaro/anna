@@ -11,6 +11,7 @@ from tensorflow.python.framework import ops
 from tensorflow.python.eager import context
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import state_ops
 from tensorflow.python.ops import variable_scope
 
 
@@ -79,10 +80,7 @@ def _label_hot_to_idx(name, labels, vocab):
 def f_measure(labels,
               predictions,
               num_classes,
-              weights=None,
               micro=True,
-              metrics_collections=None,
-              updates_collections=None,
               name=None):
     """Computes the label-based f1 score of the predictions with respect to
     the labels.
@@ -94,10 +92,6 @@ def f_measure(labels,
 
     For estimation of the metric over a stream of data, the function creates an
     `update_op` that updates these variables and returns the `f_measure`.
-    `update_op` weights each prediction by the corresponding value in `weights`.
-
-    If `weights` is `None`, weights default to 1. Use weights of 0 to mask
-    values.
 
     Args:
       labels (tf.Tensor): the ground truth values, a `Tensor` whose dimensions
@@ -106,15 +100,8 @@ def f_measure(labels,
         dimensions.
       num_classes (int): the possible number of labels the prediction task can
         have.
-      weights (tf.Tensor, optional): `Tensor` whose rank is either 0, or the
-        same rank as `labels`, and must be broadcastable to `labels` (i.e., all
-        dimensions must be either `1`, or the same as `labels` dimension).
       micro (bool, optional): Whether the f measure should be taken globally
         (i.e. micro), or averaged per class (i.e. macro).
-      metrics_collections (list[tf.Collection]): An optional list of collections that `f_measure`
-        should be added to.
-      updates_collections: An optional list of collections that `update_op`
-        should be added to.
       name: An optional variable_scope name.
 
     Returns:
@@ -124,82 +111,54 @@ def f_measure(labels,
         whose value matches `f_measure`.
 
     Raises:
-      ValueError: If `predictions` and `labels` have mismatched shapes, or if
-        `weights` is not `None` and its shape doesn't match `predictions`, or if
-        either `metrics_collections` or `updates_collections` are not a list or
-        tuple.
       RuntimeError: If eager execution is enabled.
     """
     if context.executing_eagerly():
         raise RuntimeError('tf.metrics.f_measure is not '
                            'supported when eager execution is enabled.')
 
-    if micro:
-        labels = [labels]
-        predictions = [predictions]
-        weights = [weights]
-    else:
-        labels = [labels[:, idx] for idx in range(num_classes)]
-        predictions = [predictions[:, idx] for idx in range(num_classes)]
-        if weights is None:
-            weights = [None for _ in range(num_classes)]
-        else:
-            weights = [weights[:, idx] for idx in range(num_classes)]
-
-    all_true_p = []
-    all_true_p_op = []
-    all_false_p = []
-    all_false_p_op = []
-    all_false_n = []
-    all_false_n_op = []
     with variable_scope.variable_scope(name, 'f_measure',
-                                       (predictions, labels, weights)):
+                                       (predictions, labels)):
 
-        for l, p, w in zip(labels, predictions, weights):
-            true_p, true_positives_update_op = tf.metrics.true_positives(
-                l, p, w,
-                metrics_collections=None,
-                updates_collections=None,
-                name=None)
-            false_p, false_positives_update_op = tf.metrics.false_positives(
-                l, p, w,
-                metrics_collections=None,
-                updates_collections=None,
-                name=None)
-            false_n, false_negatives_update_op = tf.metrics.false_negatives(
-                l, p, w,
-                metrics_collections=None,
-                updates_collections=None,
-                name=None)
-            all_true_p.append(true_p)
-            all_true_p_op.append(true_positives_update_op)
-            all_false_p.append(false_p)
-            all_false_p_op.append(false_positives_update_op)
-            all_false_n.append(false_n)
-            all_false_n_op.append(false_negatives_update_op)
+        def count_hits(expected, predicted):
+            hits = math_ops.logical_and(expected, predicted)
+            hits = math_ops.cast(hits, dtypes.float32)
+            return math_ops.reduce_sum(hits, axis=0)
 
-        def compute_f_measure(tp, fp, fn, name):
+        is_true_positive = count_hits(
+            math_ops.equal(labels, 1.),
+            math_ops.equal(predictions, 1.))
+
+        is_false_positive = count_hits(
+            math_ops.equal(labels, 0.),
+            math_ops.equal(predictions, 1.))
+
+        is_false_negative = count_hits(
+            math_ops.equal(labels, 1.),
+            math_ops.equal(predictions, 0.))
+
+        tp_var = metric_variable([num_classes], dtypes.float32)
+        fp_var = metric_variable([num_classes], dtypes.float32)
+        fn_var = metric_variable([num_classes], dtypes.float32)
+
+        tp_up = state_ops.assign_add(tp_var, is_true_positive)
+        fp_up = state_ops.assign_add(fp_var, is_false_positive)
+        fn_up = state_ops.assign_add(fn_var, is_false_negative)
+
+        def compute_f_measure(tp, fp, fn, micro, name):
+            if micro:
+                tp = math_ops.reduce_sum(tp)
+                fp = math_ops.reduce_sum(fp)
+                fn = math_ops.reduce_sum(fn)
             value = 2 * tp
             den = 2 * tp + fp + fn
             res = array_ops.where(math_ops.greater(den, 0),
                                   math_ops.div(value, den),
-                                  array_ops.ones_like(value), name)
-            return math_ops.reduce_mean(res)
+                                  array_ops.ones_like(value))
+            return math_ops.reduce_mean(res, name=name)
 
-        f = compute_f_measure(array_ops.stack(all_true_p),
-                              array_ops.stack(all_false_p),
-                              array_ops.stack(all_false_n),
-                              'value')
-        update_op = compute_f_measure(array_ops.stack(all_true_p_op),
-                                      array_ops.stack(all_false_p_op),
-                                      array_ops.stack(all_false_n_op),
-                                      'update_op')
-
-        if metrics_collections:
-            ops.add_to_collections(metrics_collections, f)
-
-        if updates_collections:
-            ops.add_to_collections(updates_collections, update_op)
+        f = compute_f_measure(tp_var, fp_var, fn_var, micro, 'value')
+        update_op = compute_f_measure(tp_up, fp_up, fn_up, micro, 'update_op')
 
         return f, update_op
 
@@ -261,3 +220,18 @@ def f_example(labels,
                            metrics_collections=metrics_collections,
                            updates_collections=updates_collections,
                            name=name)
+
+
+def metric_variable(shape, dtype, validate_shape=True, name=None):
+    """Create variable in `GraphKeys.(LOCAL|METRIC_VARIABLES`) collections.
+
+    Taken from tf.metrics directly, as the function is not exposed."""
+
+    return variable_scope.variable(
+        lambda: array_ops.zeros(shape, dtype),
+        trainable=False,
+        collections=[
+            ops.GraphKeys.LOCAL_VARIABLES, ops.GraphKeys.METRIC_VARIABLES
+        ],
+        validate_shape=validate_shape,
+        name=name)
