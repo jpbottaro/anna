@@ -364,7 +364,8 @@ class DecoderAttRNN(DecoderRNN):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
-                              mode)
+                              mode,
+                              self.dropout)
 
         # Add dropout to mem_fixed
         mem_fixed = tf.layers.dropout(mem_fixed,
@@ -385,7 +386,7 @@ class DecoderAttRNN(DecoderRNN):
                                                     multiplier=self.beam_width)
             batch_size *= self.beam_width
 
-        att_mechanism = tf.contrib.seq2seq.LuongAttention(
+        att_mechanism = tf.contrib.seq2seq.BahdanauAttention(
             self.hidden_size, mem, mem_len)
 
         cell = tf.contrib.seq2seq.AttentionWrapper(
