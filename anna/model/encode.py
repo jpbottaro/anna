@@ -33,7 +33,7 @@ class Encoder:
                  data_dir,
                  input_names=None,
                  input_limit=None,
-                 emb_size=200000,
+                 emb_size=40000,
                  oov_buckets=10000,
                  fixed_embeddings=False):
         """
