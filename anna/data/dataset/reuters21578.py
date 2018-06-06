@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 DESTINATION = "reuters21578"
 TAR_NAME = DESTINATION + ".tar.gz"
 URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/" \
-    + "reuters21578-mld/" + TAR_NAME
+      + "reuters21578-mld/" + TAR_NAME
 REUTER_SGML = "reut2-{:03}.sgm"
 
 

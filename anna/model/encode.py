@@ -235,12 +235,12 @@ class EncoderCNN(Encoder):
             # Run CNN over words
             # (batch, input_len, filters)
             pool = tf.layers.conv1d(
-                    name="{}_conv_{}".format(name, size),
-                    inputs=x,
-                    filters=256,
-                    kernel_size=size,
-                    padding="same",
-                    activation=tf.nn.relu)
+                name="{}_conv_{}".format(name, size),
+                inputs=x,
+                filters=256,
+                kernel_size=size,
+                padding="same",
+                activation=tf.nn.relu)
 
             # Max over-time pooling
             # (batch, filters)

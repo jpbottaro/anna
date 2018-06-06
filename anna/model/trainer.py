@@ -74,6 +74,7 @@ class Trainer:
             val_size (int): size of the validation set, in nr of docs
             epochs (int): max number of epochs to run
         """
+
         def train_input():
             return input_fn(docs.skip(val_size),
                             batch_size=self.batch_size,

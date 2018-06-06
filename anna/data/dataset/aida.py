@@ -11,7 +11,7 @@ import anna.data.dataset.conll03 as conll03
 AIDA_NAME = "aida-yago2-dataset"
 AIDA_FILE = AIDA_NAME + ".zip"
 AIDA_URL = \
-  "http://resources.mpi-inf.mpg.de/yago-naga/aida/download/" + AIDA_FILE
+    "http://resources.mpi-inf.mpg.de/yago-naga/aida/download/" + AIDA_FILE
 AIDA_SCRIPT = "java -jar aida-yago2-dataset.jar <<< '{}'"
 AIDA_FINAL_FILE = "AIDA-YAGO2-dataset.tsv"
 

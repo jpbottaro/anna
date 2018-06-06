@@ -7,25 +7,25 @@ import anna.data.utils as utils
 
 CORPORA = {
     "europarl-parallel.tgz":
-    "http://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz",
+        "http://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz",
 
     "europarl-monolingual.tgz":
-    "http://www.statmt.org/wmt13/training-monolingual-europarl-v7.tgz",
+        "http://www.statmt.org/wmt13/training-monolingual-europarl-v7.tgz",
 
     "commoncrawl.tgz":
-    "http://www.statmt.org/wmt13/training-parallel-commoncrawl.tgz",
+        "http://www.statmt.org/wmt13/training-parallel-commoncrawl.tgz",
 
     "un.tgz":
-    "http://www.statmt.org/wmt13/training-parallel-un.tgz",
+        "http://www.statmt.org/wmt13/training-parallel-un.tgz",
 
     "nc-parallel.tgz":
-    "http://www.statmt.org/wmt14/training-parallel-nc-v9.tgz",
+        "http://www.statmt.org/wmt14/training-parallel-nc-v9.tgz",
 
     "nc-monolingual.tgz":
-    "http://www.statmt.org/wmt14/training-monolingual-nc-v9.tgz",
+        "http://www.statmt.org/wmt14/training-monolingual-nc-v9.tgz",
 
     "giga-fren.tar":
-    "http://www.statmt.org/wmt10/training-giga-fren.tar",
+        "http://www.statmt.org/wmt10/training-giga-fren.tar",
 
     "dev.tgz": "http://www.statmt.org/wmt14/dev.tgz",
 

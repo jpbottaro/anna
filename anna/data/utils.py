@@ -245,9 +245,9 @@ def parse_example(ex):
         labels = sequence["labels"]
 
     return ({
-        "title": title,
-        "text": text,
-    }, labels)
+                "title": title,
+                "text": text,
+            }, labels)
 
 
 def mlc_tfrecords(folder, docs_creator):
