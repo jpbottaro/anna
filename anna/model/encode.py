@@ -184,7 +184,9 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
             num_oov_buckets=oov_size).lookup(x)
 
         # Count how many out-of-vocabulary (OOV) words are in the input
-        num_oov = tf.logical_or(tf.equal(x, 1), tf.greater_equal(x, len(words)))
+        num_oov = tf.to_float(x) * x_mask
+        num_oov = tf.logical_or(tf.equal(num_oov, 1),
+                                tf.greater_equal(num_oov, len(words)))
         num_oov = tf.reduce_sum(tf.to_float(num_oov), axis=1)
 
         # Replace with embeddings
@@ -193,7 +195,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
 
         # Clear embeddings for pads
         # (batch, input_limit, emb_size)
-        x = tf.multiply(x, x_mask[:, :, tf.newaxis])
+        x = x * x_mask[:, :, tf.newaxis]
 
     tf.summary.scalar("n_oov_words".format(name), tf.reduce_mean(num_oov))
 
