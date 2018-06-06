@@ -27,10 +27,10 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
         raise ValueError("Unknown rnn_type '{}'".format(rnn_type))
 
     if dropout > 0.0:
-        keep_prop = (1.0 - dropout)
+        keep_prob = (1.0 - dropout)
         cell = tf.nn.rnn_cell.DropoutWrapper(
             cell=cell,
-            input_keep_prob=keep_prop,
+            input_keep_prob=keep_prob,
         )
 
     if residual:
