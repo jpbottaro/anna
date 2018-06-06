@@ -47,10 +47,9 @@ def parse(glove_dir, voc_size):
     with open(glove_path) as f:
         for line in f:
             parts = line.split(" ")
-            if parts[0] not in voc:
-                voc.append(parts[0])
-                emb.append([float(n) for n in parts[1:]])
-            if len(emb) >= voc_size:
+            voc.append(parts[0])
+            emb.append([float(n) for n in parts[1:]])
+            if len(voc) >= voc_size:
                 break
 
     return utils.add_special_tokens(voc, np.array(emb))
