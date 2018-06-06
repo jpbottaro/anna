@@ -183,6 +183,9 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
             default_value=1,
             num_oov_buckets=oov_size).lookup(x)
 
+        # Record how many UNK words are in the input
+        num_unk = tf.reduce_sum(tf.to_float(tf.equal(x, 1)), axis=1)
+
         # Replace with embeddings
         # (batch, input_limit, emb_size)
         x = tf.nn.embedding_lookup(emb, x)
@@ -190,6 +193,9 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
         # Clear embeddings for pads
         # (batch, input_limit, emb_size)
         x = tf.multiply(x, x_mask[:, :, tf.newaxis])
+
+    tf.summary.scalar("n_unknown_words".format(name),
+                      tf.reduce_mean(num_unk))
 
     return x, x_len
 
