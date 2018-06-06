@@ -34,7 +34,7 @@ class Encoder:
                  input_names=None,
                  input_limit=None,
                  emb_size=40000,
-                 oov_buckets=10000,
+                 oov_size=10000,
                  fixed_embeddings=False):
         """
         Creates an encoder with the given embeddings and maximum size
@@ -45,7 +45,7 @@ class Encoder:
             input_names (list[str]): names of the string inputs to encode
             input_limit (int): maximum size to use from the input sequence
             emb_size (int): nr of embeddings to store (i.e. size of vocabulary)
-            oov_buckets (int): nr of buckets to use for out-of-vocabulary words
+            oov_size (int): nr of buckets to use for out-of-vocabulary words
             fixed_embeddings (bool): whether the embeddings should be trained
         """
         if not input_names:
@@ -54,15 +54,15 @@ class Encoder:
         self.data_dir = data_dir
         self.input_names = input_names
         self.input_limit = input_limit
-        self.oov_buckets = oov_buckets
+        self.oov_size = oov_size
         self.fixed_emb = fixed_embeddings
 
         # Fetch pre-trained word embeddings
         self.words, self.emb = embeddings.fetch_and_parse(data_dir,
                                                           voc_size=emb_size)
 
-        if oov_buckets > 0:
-            extra_emb = np.random.uniform(-1, 1, size=[oov_buckets,
+        if oov_size > 0:
+            extra_emb = np.random.uniform(-1, 1, size=[oov_size,
                                                        self.emb.shape[1]])
             self.emb = np.concatenate([self.emb, extra_emb])
 
@@ -99,7 +99,7 @@ class Encoder:
                                          self.words,
                                          emb,
                                          self.input_limit,
-                                         self.oov_buckets)
+                                         self.oov_size)
 
                     m, m_len, m_fixed = self.encode(x, x_len, mode, name)
 
@@ -141,7 +141,7 @@ class Encoder:
         raise NotImplementedError
 
 
-def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
+def get_input(features, name, words, emb, input_limit=None, oov_size=0):
     """
     Gets the sequence feature `name` from the `features`,
     trims the size if necessary, and maps it to its list
@@ -153,7 +153,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
         words (list[str]): list of strings as vocabulary
         emb (tf.Tensor): initialization for the word embeddings
         input_limit (int): maximum size to use from the input sequence
-        oov_buckets (int): nr of buckets to use for out-of-vocabulary words
+        oov_size (int): nr of buckets to use for out-of-vocabulary words
 
     Returns:
         x (tf.Tensor): the tensor of embeddings for the feature `name`
@@ -181,7 +181,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_buckets=0):
         x = tf.contrib.lookup.index_table_from_tensor(
             mapping=words,
             default_value=1,
-            num_oov_buckets=oov_buckets).lookup(x)
+            num_oov_buckets=oov_size).lookup(x)
 
         # Replace with embeddings
         # (batch, input_limit, emb_size)
