@@ -33,7 +33,7 @@ class Encoder:
                  data_dir,
                  input_names=None,
                  input_limit=None,
-                 emb_size=40000,
+                 emb_size=100000,
                  oov_size=10000,
                  fixed_embeddings=False):
         """
@@ -183,8 +183,9 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
             default_value=1,
             num_oov_buckets=oov_size).lookup(x)
 
-        # Record how many UNK words are in the input
-        num_unk = tf.reduce_sum(tf.to_float(tf.equal(x, 1)), axis=1)
+        # Count how many out-of-vocabulary (OOV) words are in the input
+        num_oov = tf.logical_or(tf.equal(x, 1), tf.greater_equal(x, len(words)))
+        num_oov = tf.reduce_sum(tf.to_float(num_oov), axis=1)
 
         # Replace with embeddings
         # (batch, input_limit, emb_size)
@@ -194,8 +195,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
         # (batch, input_limit, emb_size)
         x = tf.multiply(x, x_mask[:, :, tf.newaxis])
 
-    tf.summary.scalar("n_unknown_words".format(name),
-                      tf.reduce_mean(num_unk))
+    tf.summary.scalar("n_oov_words".format(name), tf.reduce_mean(num_oov))
 
     return x, x_len
 
