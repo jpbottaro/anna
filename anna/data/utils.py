@@ -21,7 +21,7 @@ number_finder = re.compile(r"[+-]?(\d+,?)+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 
 # Find dots that should be split, examples: mention. | yesterday. | 2019.
 #                             bad examples: U.S.A. | Dr.
-dot_finder = re.compile(r"\W(?:[a-z\d]{1,3}|[\w\d]{4,})(\.)")
+dot_finder = re.compile(r"(\W[a-z\d]{1,3}|[\w\d]{4,})\.")
 
 
 def tokenize(text,
@@ -52,7 +52,7 @@ def tokenize(text,
     remover = str.maketrans({c: " " for c in remove})
     separator = str.maketrans({c: " " + c + " " for c in separate})
 
-    text = dot_finder.sub(" . ", text)
+    text = dot_finder.sub(r"\1 . ", text)
     text = text.translate(remover)
     text = text.translate(separator)
 
