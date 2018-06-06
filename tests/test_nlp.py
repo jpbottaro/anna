@@ -13,7 +13,15 @@ def test_remove():
 
 def test_separate():
     assert tokenize("I'm a test, super-test.") == \
-        ["I", "'m", "a", "test", ",", "super-test", "."]
+        ["I", "'m", "a", "test", ",", "super", "-", "test", "."]
+
+
+def test_dot():
+    assert tokenize("My name is Dr. John.") == \
+        ["My", "name", "is", "Dr.", "John", "."]
+
+    assert tokenize("I am from U.K., not U.S.A.") == \
+        ["I", "am", "from", "U.K.", ",", "not", "U.S.A."]
 
 
 def test_number():

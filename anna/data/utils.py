@@ -26,7 +26,8 @@ dot_finder = re.compile(r"(\W[a-z\d]{1,3}|[\w\d]{4,})\.")
 
 def tokenize(text,
              remove="<>#*+=@[\\]^_{|}~\t\n\x00\x01\x02\x03",
-             separate="()\"?!/'%$&,;:`-",
+             separate="()\"?!/%$&,;:`-",
+             separate_left="'",
              number_token="1"):
     """
     Tokenizes the given `text`. Removes all tokens in `remove`, and splits
@@ -37,7 +38,8 @@ def tokenize(text,
     Args:
         text (str): a piece of text to tokenize
         remove (str): chars that should be removed
-        separate (str): chars that should separate tokens (and kept)
+        separate (str): chars that should separate tokens
+        separate_left (str): chars that should separate tokens to the left
         number_token (str): token to use for all numbers
 
     Returns:
@@ -51,10 +53,12 @@ def tokenize(text,
 
     remover = str.maketrans({c: " " for c in remove})
     separator = str.maketrans({c: " " + c + " " for c in separate})
+    separator_left = str.maketrans({c: " " + c for c in separate_left})
 
     text = dot_finder.sub(r"\1 . ", text)
     text = text.translate(remover)
     text = text.translate(separator)
+    text = text.translate(separator_left)
 
     return [t for t in text.split() if t]
 
