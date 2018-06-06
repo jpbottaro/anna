@@ -19,15 +19,15 @@ LABELS_PATH = "labels.pickle"
 # Find numbers, examples: -1 | 123 | 1.324e10 | 1,234.24
 number_finder = re.compile(r"[+-]?(\d+,?)+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 
-# Find numbers, examples: -1 | 123 | 1.324e10 | 1,234.24
-entity_reference_finder = re.compile(r"&\w{1,7};")
+# Find dots that should be split, examples: mention. | yesterday. | 2019.
+#                             bad examples: U.S.A. | Dr.
+dot_finder = re.compile(r"\W(?:[a-z\d]{1,3}|[\w\d]{4,})(\.)")
 
 
 def tokenize(text,
-             remove="<>#*+=@[\\]^_{|}~\t\n",
-             separate="()\"?!/'%$&,.;:`",
-             number_token="1",
-             remove_escape_chars=True):
+             remove="<>#*+=@[\\]^_{|}~\t\n\x00\x01\x02\x03",
+             separate="()\"?!/'%$&,;:`-",
+             number_token="1"):
     """
     Tokenizes the given `text`. Removes all tokens in `remove`, and splits
     the ones in `separate`.
@@ -39,7 +39,6 @@ def tokenize(text,
         remove (str): chars that should be removed
         separate (str): chars that should separate tokens (and kept)
         number_token (str): token to use for all numbers
-        remove_escape_chars (bool): whether to remove escape chars (e.g. &lt;).
 
     Returns:
         tokens (list[str]): list of tokens from `text`
@@ -50,11 +49,10 @@ def tokenize(text,
     if number_token:
         text = number_finder.sub(number_token, text)
 
-    if remove_escape_chars:
-        text = number_finder.sub("", text)
-
     remover = str.maketrans({c: " " for c in remove})
-    separator = str.maketrans({c: " " + c for c in separate})
+    separator = str.maketrans({c: " " + c + " " for c in separate})
+
+    text = dot_finder.sub(" . ", text)
     text = text.translate(remover)
     text = text.translate(separator)
 

@@ -34,7 +34,7 @@ class Encoder:
                  input_names=None,
                  input_limit=None,
                  emb_size=100000,
-                 oov_size=10000,
+                 oov_size=1000,
                  fixed_embeddings=False):
         """
         Creates an encoder with the given embeddings and maximum size
