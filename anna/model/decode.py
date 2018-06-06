@@ -341,11 +341,6 @@ class DecoderRNN(Decoder):
                               mode,
                               self.dropout)
 
-        # Add dropout to mem_fixed
-        mem_fixed = tf.layers.dropout(mem_fixed,
-                                      rate=self.dropout,
-                                      training=is_training)
-
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]
         zero_state = cell.zero_state(batch_size, mem.dtype)
@@ -366,11 +361,6 @@ class DecoderAttRNN(DecoderRNN):
                               self.hidden_size,
                               mode,
                               self.dropout)
-
-        # Add dropout to mem_fixed
-        mem_fixed = tf.layers.dropout(mem_fixed,
-                                      rate=self.dropout,
-                                      training=is_training)
 
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(mem_fixed)[0]
