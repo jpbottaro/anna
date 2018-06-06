@@ -19,11 +19,15 @@ LABELS_PATH = "labels.pickle"
 # Find numbers, examples: -1 | 123 | 1.324e10 | 1,234.24
 number_finder = re.compile(r"[+-]?(\d+,?)+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 
+# Find numbers, examples: -1 | 123 | 1.324e10 | 1,234.24
+entity_reference_finder = re.compile(r"&\w{1,7};")
+
 
 def tokenize(text,
-             remove="\"#()*+<=>@[\\]^_`{|}~\t\n",
-             separate="?!/'%$&,.;:",
-             number_token="1"):
+             remove="<>#*+=@[\\]^_{|}~\t\n",
+             separate="()\"?!/'%$&,.;:`",
+             number_token="1",
+             remove_escape_chars=True):
     """
     Tokenizes the given `text`. Removes all tokens in `remove`, and splits
     the ones in `separate`.
@@ -35,6 +39,7 @@ def tokenize(text,
         remove (str): chars that should be removed
         separate (str): chars that should separate tokens (and kept)
         number_token (str): token to use for all numbers
+        remove_escape_chars (bool): whether to remove escape chars (e.g. &lt;).
 
     Returns:
         tokens (list[str]): list of tokens from `text`
@@ -44,6 +49,9 @@ def tokenize(text,
 
     if number_token:
         text = number_finder.sub(number_token, text)
+
+    if remove_escape_chars:
+        text = number_finder.sub("", text)
 
     remover = str.maketrans({c: " " for c in remove})
     separator = str.maketrans({c: " " + c for c in separate})
