@@ -32,4 +32,4 @@ notebook: venv
 clean:
 	rm -rf .venv
 
-.PHONY: venv datasets test run clean notebook
+.PHONY: venv datasets test run run-rcv1 run-bioasq clean notebook
