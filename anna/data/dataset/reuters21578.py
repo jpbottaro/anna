@@ -59,7 +59,6 @@ def parse(reuters_dir):
     train_docs = []
     test_docs = []
     unused_docs = []
-    label_counts = Counter()
     for i in range(22):
         path = os.path.join(reuters_dir, REUTER_SGML.format(i))
         with open(path, encoding="latin1") as fp:
@@ -87,19 +86,21 @@ def parse(reuters_dir):
                 is_topics = article.get("topics")
                 if lewis_split == "TRAIN" and is_topics == "YES":
                     train_docs.append(doc)
-                    label_counts.update(labels)
                 elif lewis_split == "TEST" and is_topics == "YES":
                     test_docs.append(doc)
                 else:
                     unused_docs.append(doc)
 
-    # Get list of labels, from frequent to rare
-    labels = [l[0] for l in label_counts.most_common()]
-
     # Removes unlabelled docs and labels that don't appear in both train & test
     train_docs, test_docs, unused_docs = yang_filter(train_docs,
                                                      test_docs,
                                                      unused_docs)
+
+    # Get list of labels, from frequent to rare
+    label_counts = Counter()
+    for d in train_docs:
+        label_counts.update(d.labels)
+    labels = [l[0] for l in label_counts.most_common()]
 
     return train_docs, test_docs, unused_docs, labels
 
