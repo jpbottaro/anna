@@ -20,6 +20,7 @@ class Trainer:
                  labels,
                  encoder,
                  decoder,
+                 folder_name="model",
                  name="unnamed",
                  batch_size=64,
                  learning_rate=0.001,
@@ -34,6 +35,7 @@ class Trainer:
             labels (list[str]): list of possible labels
             encoder (Encoder): transforms the input text into numbers
             decoder (Decoder): takes the encoded input and produces labels
+            folder_name (str): name of the folder where to save the model
             name (str): name for the model (used to save checkpoints/summaries)
             batch_size (int): batch size for training
             learning_rate (float): training learning rate
@@ -47,7 +49,7 @@ class Trainer:
             session_config=session_config,
             keep_checkpoint_max=1
         )
-        model_dir = os.path.join(data_dir, "model", name)
+        model_dir = os.path.join(data_dir, folder_name, name)
         self.batch_size = batch_size
         self.estimator = tf.estimator.Estimator(
             model_fn=model_fn,
