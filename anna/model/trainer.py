@@ -41,7 +41,10 @@ class Trainer:
             decay_rate (float): the factor to decay the learning rate
             decay_steps (int): how many steps to wait for each decay
         """
+        session_config = tf.ConfigProto()
+        session_config.gpu_options.per_process_gpu_memory_fraction = 1
         config = tf.estimator.RunConfig(
+            session_config=session_config,
             keep_checkpoint_max=1
         )
         model_dir = os.path.join(data_dir, "model", name)
