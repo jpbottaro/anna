@@ -119,12 +119,12 @@ def yang_filter(train_docs, test_docs, unused_docs):
     Args:
         train_docs (list[Doc]): annotated articles for training
         test_docs (list[Doc]): annotated articles for testing
-        unused_docs (list[Doc]): unused docs acording to the "ModApte" split
+        unused_docs (list[Doc]): unused docs according to the "ModApte" split
 
     Returns:
         train_docs (list[Doc]): annotated articles for training
         test_docs (list[Doc]): annotated articles for testing
-        unused_docs (list[Doc]): unused docs acording to the "ModApte" AND
+        unused_docs (list[Doc]): unused docs according to the "ModApte" AND
                                  Yang's extra filter
     """
     # Get labels that don't appear in _both_ train and test
@@ -136,10 +136,13 @@ def yang_filter(train_docs, test_docs, unused_docs):
     for doc in train_docs + test_docs:
         doc.labels = [l for l in doc.labels if l not in bad_labels]
 
-    # Remove all docs that have no labels
+    # Find all docs that have no labels
     bad_docs = [d for d in train_docs + test_docs if not d.labels]
-    train_docs = [d for d in train_docs if d not in bad_docs]
-    test_docs = [d for d in test_docs if d not in bad_docs]
+    bad_docs_set = set(bad_docs)
+
+    # Remove them from train/test
+    train_docs = [d for d in train_docs if d not in bad_docs_set]
+    test_docs = [d for d in test_docs if d not in bad_docs_set]
     unused_docs = unused_docs + bad_docs
 
     return train_docs, test_docs, unused_docs
