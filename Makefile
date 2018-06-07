@@ -14,7 +14,13 @@ test: venv
 	@.venv/bin/python setup.py test
 
 run: venv
-	@TF_CPP_MIN_LOG_LEVEL=3 .venv/bin/python anna/main.py data
+	@TF_CPP_MIN_LOG_LEVEL=3 .venv/bin/python anna/main.py data reuters
+
+run-rcv1: venv
+	@TF_CPP_MIN_LOG_LEVEL=3 .venv/bin/python anna/main.py data rcv1
+
+run-bioasq: venv
+	@TF_CPP_MIN_LOG_LEVEL=3 .venv/bin/python anna/main.py data bioasq
 
 tb: venv
 	@. .venv/bin/activate && \

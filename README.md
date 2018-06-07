@@ -14,7 +14,7 @@ Reuters-21578/RCV1-v2). See some results in our [notebooks](notebook/text).
 
 ## How to run
 
-Requires python 3. Run example with:
+Requires python 3. Run example on Reuters21578 with:
 
 ```bash
 make run

@@ -65,7 +65,7 @@ class Trainer:
                 "decay_steps": decay_steps
             })
 
-    def train(self, docs, test_docs=None, val_size=500, epochs=50):
+    def train(self, docs, test_docs=None, val_size=500, epochs=10):
         """
         Train model on `docs`, and run evaluations on `test_docs`.
 
