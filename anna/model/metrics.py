@@ -15,7 +15,7 @@ from tensorflow.python.ops import state_ops
 from tensorflow.python.ops import variable_scope
 
 
-def create(labels, predictions, vocab):
+def create(labels, predictions, vocab, text_samples=False, histograms=False):
     num_classes = len(vocab)
     with tf.name_scope("metrics"):
         expected_labels_idx, expected_labels_str = _label_hot_to_idx(
@@ -46,10 +46,13 @@ def create(labels, predictions, vocab):
     for name, value in metrics.items():
         tf.summary.scalar(name, value[1])
 
-    tf.summary.text("out/expected_labels_examples", expected_labels_str)
-    tf.summary.text("out/predicted_labels_examples", predicted_labels_str)
-    tf.summary.histogram("out/expected_labels_dist", expected_labels_idx)
-    tf.summary.histogram("out/predicted_labels_dist", predicted_labels_idx)
+    if text_samples:
+        tf.summary.text("out/expected_labels_examples", expected_labels_str)
+        tf.summary.text("out/predicted_labels_examples", predicted_labels_str)
+
+    if histograms:
+        tf.summary.histogram("out/expected_labels_dist", expected_labels_idx)
+        tf.summary.histogram("out/predicted_labels_dist", predicted_labels_idx)
 
     return metrics
 
