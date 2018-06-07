@@ -93,6 +93,10 @@ class DecoderBR(Decoder):
 
 
 class DecoderRNN(Decoder):
+    """
+    Decoder as a sequence prediction, where a new label is predicted at each
+    time step (until a special end labels is produced).
+    """
 
     def __init__(self,
                  data_dir,
@@ -105,8 +109,7 @@ class DecoderRNN(Decoder):
                  dropout=.2,
                  beam_width=0):
         """
-        Binary Relevance decoder, where each label is an independent
-        binary prediction.
+        Creates the sequence prediction decoder.
 
         Args:
             data_dir (str): path to the data folder.
@@ -354,6 +357,23 @@ class DecoderRNN(Decoder):
 
 
 class DecoderAttRNN(DecoderRNN):
+    """
+    Decoder as a sequence prediction, where a new label is predicted at each
+    time step (until a special end labels is produced).
+
+    An attention mechanism is used to retrieve the important information at each
+    time step from the encoder.
+    """
+
+    def __init__(self,
+                 data_dir,
+                 label_voc,
+                 attention=tf.contrib.seq2seq.BahdanauAttention,
+                 *args,
+                 **kwargs):
+        super().__init__(data_dir, label_voc, *args, **kwargs)
+
+        self.attention = attention
 
     def build_cell(self, mem, mem_len, mem_fixed, mode):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
@@ -376,8 +396,7 @@ class DecoderAttRNN(DecoderRNN):
                                                     multiplier=self.beam_width)
             batch_size *= self.beam_width
 
-        att_mechanism = tf.contrib.seq2seq.BahdanauAttention(
-            self.hidden_size, mem, mem_len)
+        att_mechanism = self.attention(self.hidden_size, mem, mem_len)
 
         cell = tf.contrib.seq2seq.AttentionWrapper(
             cell,

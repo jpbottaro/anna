@@ -1,3 +1,4 @@
+from tensorflow.contrib.seq2seq import LuongAttention
 from anna.model.trainer import Trainer
 from anna.model.encode import *
 from anna.model.decode import *
@@ -69,34 +70,52 @@ class AVGxRNN(Trainer):
         return "AVGxRNN - Average input, sequence prediction with RNN (GRU)."
 
 
-class EncDec(Trainer):
+class RNNxRNN(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir, input_limit=300),
                          DecoderRNN(data_dir, labels, beam_width=12),
-                         name="enc_dec",
+                         name="rnn_rnn",
                          learning_rate=0.001,
-                         grad_clip=5.0)
+                         grad_clip=1.0)
 
     def __repr__(self):
-        return "EncDec - Recurrent network to analyze input, " + \
+        return "RNNxRNN - Recurrent network to analyze input, " + \
                "sequence prediction with RNN (GRU)."
 
 
-class AttEncDec(Trainer):
+class EncDec(Trainer):
     def __init__(self, data_dir, labels):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir, input_limit=300),
                          DecoderAttRNN(data_dir, labels, beam_width=12),
-                         name="enc_dec_att",
+                         name="enc_dec",
                          learning_rate=0.001,
-                         grad_clip=5.0)
+                         grad_clip=1.0)
 
     def __repr__(self):
-        return "AttEncDec - Recurrent network to analyze input, " + \
+        return "EncDec - Recurrent network to analyze input, " + \
+               "sequence prediction with RNN and attention (GRU & Bahdanau)."
+
+
+class EncDecLuong(Trainer):
+    def __init__(self, data_dir, labels):
+        super().__init__(data_dir,
+                         labels,
+                         EncoderBiRNN(data_dir, input_limit=300),
+                         DecoderAttRNN(data_dir,
+                                       labels,
+                                       attention=LuongAttention,
+                                       beam_width=12),
+                         name="enc_dec_luong",
+                         learning_rate=0.001,
+                         grad_clip=1.0)
+
+    def __repr__(self):
+        return "EncDecLuong - Recurrent network to analyze input, " + \
                "sequence prediction with RNN and attention (GRU & Luong)."
 
 
-ALL = [AVGxBR, MAXxBR, CNNxBR, RNNxBR, AVGxRNN, EncDec, AttEncDec]
+ALL = [AVGxBR, MAXxBR, CNNxBR, RNNxBR, AVGxRNN, RNNxRNN, EncDec, EncDecLuong]
