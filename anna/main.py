@@ -22,16 +22,19 @@ if __name__ == "__main__":
         folder = "model"
         val_size = 777
         epochs = 40
+        shuffle = 10000
     elif dataset == "rcv1":
         data = rcv1
         folder = "model-rcv1"
         val_size = 78126
         epochs = 5
+        shuffle = 500000
     elif dataset == "bioasq":
         data = bioasq
         folder = "model-bioasq"
         val_size = 50000
         epochs = 3
+        shuffle = 500000
     else:
         raise ValueError("Unknown dataset: {}".format(dataset))
 
@@ -41,13 +44,14 @@ if __name__ == "__main__":
     # Fetch and preprocess dataset
     train_docs, test_docs, unused_docs, labels = data.fetch_and_parse(data_dir)
 
-    for builder in models.ALL:
+    for builder in models.BEST:
         # Create default trainer
         model = builder(data_dir, labels, folder_name=folder)
 
         # Train and evaluate
         print("Model: {}".format(model))
-        model.train(train_docs, test_docs, val_size=val_size, epochs=epochs)
+        model.train(train_docs, test_docs,
+                    val_size=val_size, epochs=epochs, shuffle=shuffle)
 
         # Delete to save memory
         del model

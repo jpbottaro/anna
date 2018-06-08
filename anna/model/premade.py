@@ -126,4 +126,6 @@ class EncDecLuong(Trainer):
                "sequence prediction with RNN and attention (GRU & Luong)."
 
 
+BEST = [AVGxBR, AVGxRNN, EncDec]
+CANDIDATES = [AVGxBR, AVGxRNN, RNNxBR, RNNxRNN, EncDec]
 ALL = [AVGxBR, MAXxBR, CNNxBR, RNNxBR, AVGxRNN, RNNxRNN, EncDec, EncDecLuong]
