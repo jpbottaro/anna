@@ -36,7 +36,13 @@ def parse_all(models_dir):
     """
     models = [(e.name, e.path) for e in os.scandir(models_dir) if e.is_dir()]
 
-    return {name: parse_model(path) for name, path in models}
+    result = {}
+    for name, path in models:
+        metrics = parse_model(path)
+        if metrics:
+            result[name] = metrics
+
+    return result
 
 
 def parse_model(model_dir):
@@ -50,9 +56,12 @@ def parse_model(model_dir):
         result (dict): keys are train/val/test, values are dictionaries of
           metrics and their values (output of `get_metrics()`).
     """
-    train_events = find_events(model_dir)
-    val_events = find_events(os.path.join(model_dir, "eval_val"))
-    test_events = find_events(os.path.join(model_dir, "eval_test"))
+    try:
+        train_events = find_events(model_dir)
+        val_events = find_events(os.path.join(model_dir, "eval_val"))
+        test_events = find_events(os.path.join(model_dir, "eval_test"))
+    except FileNotFoundError:
+        return None
 
     return {
         "train": get_metrics(train_events),
@@ -96,8 +105,8 @@ if __name__ == "__main__":
     save_path = os.path.abspath(sys.argv[2])
 
     # Get all metrics
-    metrics = parse_all(models_path)
+    all_metrics = parse_all(models_path)
 
     # Save as json
     with open(save_path, "w") as f:
-        json.dump(metrics, f)
+        json.dump(all_metrics, f)
