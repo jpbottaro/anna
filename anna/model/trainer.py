@@ -65,7 +65,8 @@ class Trainer:
                 "decay_steps": decay_steps
             })
 
-    def train(self, docs, test_docs=None, val_size=500, epochs=10):
+    def train(self, docs, test_docs=None,
+              val_size=500, shuffle=10000, epochs=10):
         """
         Train model on `docs`, and run evaluations on `test_docs`.
 
@@ -77,13 +78,14 @@ class Trainer:
             docs (tf.data.Dataset): the documents for training
             test_docs (tf.data.Dataset): the documents for evaluation
             val_size (int): size of the validation set, in nr of docs
+            shuffle (int): size of the buffer use to shuffle the training set
             epochs (int): max number of epochs to run
         """
 
         def train_input():
             return input_fn(docs.skip(val_size),
                             batch_size=self.batch_size,
-                            shuffle=10000)
+                            shuffle=shuffle)
 
         def val_input():
             return input_fn(docs.take(val_size), batch_size=self.batch_size)
