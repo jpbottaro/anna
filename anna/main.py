@@ -26,15 +26,15 @@ if __name__ == "__main__":
     elif dataset == "rcv1":
         data = rcv1
         folder = "model-rcv1"
-        val_size = 78126
+        val_size = 75000
         epochs = 5
-        shuffle = 500000
+        shuffle = 750000
     elif dataset == "bioasq":
         data = bioasq
         folder = "model-bioasq"
-        val_size = 50000
+        val_size = 100000
         epochs = 3
-        shuffle = 500000
+        shuffle = 1000000
     else:
         raise ValueError("Unknown dataset: {}".format(dataset))
 
