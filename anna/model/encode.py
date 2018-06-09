@@ -205,7 +205,8 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
         # (batch, input_limit, emb_size)
         x = x * x_mask[:, :, tf.newaxis]
 
-    tf.summary.scalar("n_oov_words".format(name), tf.reduce_mean(num_oov))
+    tf.summary.scalar("n_words", tf.reduce_mean(x_len))
+    tf.summary.scalar("n_oov_words", tf.reduce_mean(num_oov))
 
     return x, x_len
 
