@@ -26,7 +26,9 @@ class Trainer:
                  learning_rate=0.001,
                  grad_clip=0.,
                  decay_rate=1.,
-                 decay_steps=0):
+                 decay_steps=0,
+                 *args,
+                 **kwargs):
         """
         Trains Multi-label Classification models.
 
