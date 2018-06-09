@@ -37,7 +37,9 @@ class Encoder:
                  oov_size=1000,
                  fixed_embeddings=False,
                  lowercase=False,
-                 stem=False):
+                 stem=False,
+                 *args,
+                 **kwargs):
         """
         Creates an encoder with the given embeddings and maximum size
         for the input.
