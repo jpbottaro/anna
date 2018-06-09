@@ -1,4 +1,3 @@
-from tensorflow.contrib.seq2seq import LuongAttention
 from anna.model.trainer import Trainer
 from anna.model.encode import *
 from anna.model.decode import *
