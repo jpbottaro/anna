@@ -104,7 +104,7 @@ class DecoderRNN(Decoder):
                  hidden_size=1024,
                  max_steps=30,
                  emb_size=256,
-                 rnn_type="gru",
+                 rnn_type="lstm",
                  bridge=DenseBridge(),
                  dropout=.2,
                  beam_width=0):
