@@ -274,7 +274,7 @@ class EncoderRNN(Encoder):
 
     def __init__(self,
                  data_dir,
-                 rnn_type="lstm",
+                 rnn_type="gru",
                  hidden_size=1024,
                  dropout=.2,
                  *args,

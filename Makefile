@@ -23,13 +23,12 @@ run-bioasq: venv
 	@TF_CPP_MIN_LOG_LEVEL=3 .venv/bin/python anna/main.py data bioasq
 
 tb: venv
-	@. .venv/bin/activate && \
-		TF_CPP_MIN_LOG_LEVEL=3 tensorboard --logdir data/model
+	@.venv/bin/tensorboard --logdir data/model
 
 notebook: venv
-	@. .venv/bin/activate && jupyter notebook --notebook-dir=notebook
+	@.venv/bin/jupyter notebook --notebook-dir=notebook
 
 clean:
 	rm -rf .venv
 
-.PHONY: venv datasets test run run-rcv1 run-bioasq clean notebook
+.PHONY: venv datasets test run run-rcv1 run-bioasq tb clean notebook

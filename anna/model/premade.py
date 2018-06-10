@@ -59,7 +59,7 @@ class AVGxRNN(Trainer):
                          *args, **kwargs)
 
     def __repr__(self):
-        return "AVGxRNN - Average input, sequence prediction with an LSTM."
+        return "AVGxRNN - Average input, sequence prediction with a GRU."
 
 
 class RNNxBR(Trainer):
@@ -91,7 +91,7 @@ class RNNxRNN(Trainer):
 
     def __repr__(self):
         return "RNNxRNN - Recurrent network to analyze input, " + \
-               "sequence prediction with an LSTM."
+               "sequence prediction with a GRU."
 
 
 class EncDec(Trainer):
@@ -107,7 +107,7 @@ class EncDec(Trainer):
 
     def __repr__(self):
         return "EncDec - Recurrent network to analyze input, " + \
-               "sequence prediction with RNN and attention (LSTM & Bahdanau)."
+               "sequence prediction with RNN and attention (GRU & Bahdanau)."
 
 
 BEST = [AVGxBR, AVGxRNN, EncDec]
