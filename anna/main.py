@@ -37,7 +37,7 @@ if __name__ == "__main__":
         data = bioasq
         folder = "model-bioasq"
         val_size = 100000
-        epochs = 3
+        epochs = 2
         shuffle = 1000000
         lowercase = False
         stem = False
