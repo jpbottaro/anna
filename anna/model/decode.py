@@ -162,8 +162,7 @@ class DecoderRNN(Decoder):
                 # [batch, steps, emb_size]
                 inputs = tf.nn.embedding_lookup(emb, inputs)
 
-                helper = tf.contrib.seq2seq.TrainingHelper(
-                    inputs, target_len)
+                helper = tf.contrib.seq2seq.TrainingHelper(inputs, target_len)
 
                 dec = tf.contrib.seq2seq.BasicDecoder(
                     cell,
@@ -401,6 +400,7 @@ class DecoderAttRNN(DecoderRNN):
         cell = tf.contrib.seq2seq.AttentionWrapper(
             cell,
             att_mechanism,
+            attention_layer_size=self.hidden_size,
             initial_cell_state=init,
             name="attention")
 
