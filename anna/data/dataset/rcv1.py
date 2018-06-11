@@ -77,8 +77,9 @@ def parse(rcv1_dir):
             doc_id = split[1].strip()
             topics[doc_id].add(topic)
 
-    for path, docs, is_train in [(TRAIN_FINAL, train_docs, True),
-                                 (TEST_FINAL, test_docs, False)]:
+    # IMPORTANT: we switch the order of original train and test
+    for path, docs, is_train in [(TEST_FINAL, train_docs, True),
+                                 (TRAIN_FINAL, test_docs, False)]:
         path = os.path.join(rcv1_dir, path)
         with open(path, "r") as f:
             doc_id = None
@@ -106,8 +107,7 @@ def parse(rcv1_dir):
     # Get list of labels, from frequent to rare
     labels = [l[0] for l in label_counts.most_common()]
 
-    # Switch order of original train and test
-    return test_docs, train_docs, unused_docs, labels
+    return train_docs, test_docs, unused_docs, labels
 
 
 def fetch(data_dir):
