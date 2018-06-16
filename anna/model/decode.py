@@ -10,6 +10,7 @@
 @@DecoderAttRNN
 """
 import tensorflow as tf
+import tensorflow.contrib.seq2seq as s2s
 import anna.model.utils as utils
 from anna.model.bridge import DenseBridge
 
@@ -162,20 +163,25 @@ class DecoderRNN(Decoder):
                 # [batch, steps, emb_size]
                 inputs = tf.nn.embedding_lookup(emb, inputs)
 
-                helper = tf.contrib.seq2seq.TrainingHelper(inputs, target_len)
+                helper = s2s.TrainingHelper(inputs, target_len)
 
-                dec = tf.contrib.seq2seq.BasicDecoder(
-                    cell,
-                    helper,
-                    cell_init,
-                    output_layer=output_layer
-                )
+                dec = s2s.BasicDecoder(cell, helper, cell_init)
+
+                outputs, _, _ = s2s.dynamic_decode(
+                    dec,
+                    maximum_iterations=self.max_steps,
+                    swap_memory=True,
+                    scope=scope)
+
+                # [batch, steps, n_classes]
+                logits = output_layer(outputs.rnn_output)
+
             # Inference
             else:
                 start_tokens = tf.fill([batch_size], self.sos_id)
 
                 if self.beam_width > 0:
-                    dec = tf.contrib.seq2seq.BeamSearchDecoder(
+                    dec = s2s.BeamSearchDecoder(
                         cell=cell,
                         embedding=emb,
                         start_tokens=start_tokens,
@@ -184,27 +190,28 @@ class DecoderRNN(Decoder):
                         beam_width=self.beam_width,
                         output_layer=output_layer)
                 else:
-                    helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+                    helper = s2s.GreedyEmbeddingHelper(
                         emb, start_tokens, self.eos_id)
 
-                    dec = tf.contrib.seq2seq.BasicDecoder(
+                    dec = s2s.BasicDecoder(
                         cell,
                         helper,
                         cell_init,
                         output_layer=output_layer
                     )
 
-            outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
-                dec,
-                maximum_iterations=self.max_steps,
-                swap_memory=True,
-                scope=scope)
+                outputs, _, _ = s2s.dynamic_decode(
+                    dec,
+                    maximum_iterations=self.max_steps,
+                    swap_memory=True,
+                    scope=scope)
 
-            if not is_training and self.beam_width > 0:
-                logits = tf.one_hot(outputs.predicted_ids[:, :, 0], n_labels)
-            else:
                 # [batch, steps, n_classes]
-                logits = outputs.rnn_output
+                if self.beam_width > 0:
+                    logits = tf.one_hot(outputs.predicted_ids[:, :, 0],
+                                        n_labels)
+                else:
+                    logits = outputs.rnn_output
 
         predictions = self.decode_labels(logits)
 
@@ -217,11 +224,12 @@ class DecoderRNN(Decoder):
                     logits = tf.concat([logits, pads], axis=1)
                     logits = logits[:, :target_max_len, :]
 
+                # [batch, steps, n_classes]
                 mask = tf.sequence_mask(target_len,
                                         target_max_len,
                                         dtype=logits.dtype)
 
-                # (batch, steps, n_classes)
+                # [batch, steps, n_classes]
                 loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     labels=target, logits=logits)
 
@@ -247,8 +255,8 @@ class DecoderRNN(Decoder):
         """
         # Since labels is multi-hot, `top_k` retrieves the hot indices, and
         # values act as a mask.
-        # labels: (batch, n_labels)       ~ [[0, 1, 1], [1, 0, 0]]
-        # values: (batch, max_steps - 1)  ~ [[1, 1, 0], [1, 0, 0]]
+        # labels:  (batch, n_labels)      ~ [[0, 1, 1], [1, 0, 0]]
+        # mask:    (batch, max_steps - 1) ~ [[1, 1, 0], [1, 0, 0]]
         # indices: (batch, max_steps - 1) ~ [[1, 2, 0], [0, 1, 2]]
         labels = tf.to_int32(labels)
         mask, indices = tf.nn.top_k(labels, k=self.max_steps - 1)
@@ -349,8 +357,7 @@ class DecoderRNN(Decoder):
         init = self.bridge(zero_state, mem_fixed)
 
         if not is_training and self.beam_width > 0:
-            init = tf.contrib.seq2seq.tile_batch(init,
-                                                 multiplier=self.beam_width)
+            init = s2s.tile_batch(init, multiplier=self.beam_width)
 
         return cell, init
 
@@ -367,7 +374,7 @@ class DecoderAttRNN(DecoderRNN):
     def __init__(self,
                  data_dir,
                  label_voc,
-                 attention=tf.contrib.seq2seq.LuongAttention,
+                 attention=s2s.LuongAttention,
                  *args,
                  **kwargs):
         super().__init__(data_dir, label_voc, *args, **kwargs)
@@ -376,28 +383,25 @@ class DecoderAttRNN(DecoderRNN):
 
     def build_cell(self, mem, mem_len, mem_fixed, mode):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
+        batch_size = tf.shape(mem_fixed)[0]
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
                               mode,
                               self.dropout)
 
         # Build initial state based on `mem_fixed`
-        batch_size = tf.shape(mem_fixed)[0]
         zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
 
         if not is_training and self.beam_width > 0:
-            init = tf.contrib.seq2seq.tile_batch(init,
-                                                 multiplier=self.beam_width)
-            mem = tf.contrib.seq2seq.tile_batch(mem,
-                                                multiplier=self.beam_width)
-            mem_len = tf.contrib.seq2seq.tile_batch(mem_len,
-                                                    multiplier=self.beam_width)
+            init = s2s.tile_batch(init, multiplier=self.beam_width)
+            mem = s2s.tile_batch(mem, multiplier=self.beam_width)
+            mem_len = s2s.tile_batch(mem_len, multiplier=self.beam_width)
             batch_size *= self.beam_width
 
         att_mechanism = self.attention(self.hidden_size, mem, mem_len)
 
-        cell = tf.contrib.seq2seq.AttentionWrapper(
+        cell = s2s.AttentionWrapper(
             cell,
             att_mechanism,
             attention_layer_size=self.hidden_size,
