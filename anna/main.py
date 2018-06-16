@@ -25,6 +25,7 @@ if __name__ == "__main__":
         shuffle = 10000
         lowercase = False
         stem = False
+        input_names = ["title", "text"]
     elif dataset == "rcv1":
         data = rcv1
         folder = "model-rcv1"
@@ -33,6 +34,7 @@ if __name__ == "__main__":
         shuffle = 750000
         lowercase = True
         stem = True
+        input_names = ["text"]
     elif dataset == "bioasq":
         data = bioasq
         folder = "model-bioasq"
@@ -41,6 +43,7 @@ if __name__ == "__main__":
         shuffle = 1000000
         lowercase = False
         stem = False
+        input_names = ["title", "text"]
     else:
         raise ValueError("Unknown dataset: {}".format(dataset))
 
@@ -53,6 +56,7 @@ if __name__ == "__main__":
     for builder in models.BEST:
         # Create default trainer
         model = builder(data_dir, labels,
+                        input_names=input_names,
                         folder_name=folder,
                         lowercase=lowercase,
                         stem=stem)

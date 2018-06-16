@@ -17,7 +17,7 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
     Returns:
         cell (tf.nn.rnn_cell.RNNCell): an RNN cell
     """
-    dropout = dropout if mode == tf.estimator.ModeKeys.TRAIN else 0.0
+    dropout = dropout if mode == tf.estimator.ModeKeys.TRAIN else 0.
 
     if rnn_type == "lstm":
         cell = tf.nn.rnn_cell.LSTMCell(num_units)
@@ -26,8 +26,8 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
     else:
         raise ValueError("Unknown rnn_type '{}'".format(rnn_type))
 
-    if dropout > 0.0:
-        keep_prob = (1.0 - dropout)
+    if dropout > 0.:
+        keep_prob = (1. - dropout)
         cell = tf.nn.rnn_cell.DropoutWrapper(
             cell=cell,
             input_keep_prob=keep_prob,
@@ -140,6 +140,9 @@ def seq_concat(memory, memory_len):
         final_mem_len (tf.Tensor): length of `final_mem`.
           [batch]
     """
+    if len(memory) == 1:
+        return memory[0], memory_len[0]
+
     # Calculate final length of each instance in the batch
     # [batch]
     final_len = tf.add_n(memory_len)

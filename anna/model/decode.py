@@ -348,7 +348,7 @@ class DecoderRNN(Decoder):
         zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
 
-        if mode != tf.estimator.ModeKeys.TRAIN and self.beam_width > 0:
+        if not is_training and self.beam_width > 0:
             init = tf.contrib.seq2seq.tile_batch(init,
                                                  multiplier=self.beam_width)
 
@@ -367,7 +367,7 @@ class DecoderAttRNN(DecoderRNN):
     def __init__(self,
                  data_dir,
                  label_voc,
-                 attention=tf.contrib.seq2seq.BahdanauAttention,
+                 attention=tf.contrib.seq2seq.LuongAttention,
                  *args,
                  **kwargs):
         super().__init__(data_dir, label_voc, *args, **kwargs)
@@ -403,10 +403,5 @@ class DecoderAttRNN(DecoderRNN):
             attention_layer_size=self.hidden_size,
             initial_cell_state=init,
             name="attention")
-
-        if is_training and self.dropout > 0.:
-            cell = tf.nn.rnn_cell.DropoutWrapper(
-                cell,
-                output_keep_prob=1.0 - self.dropout)
 
         return cell, cell.zero_state(batch_size, mem.dtype)
