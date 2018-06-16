@@ -86,6 +86,7 @@ class RNNxRNN(Trainer):
                                       *args, **kwargs),
                          DecoderRNN(data_dir, labels, beam_width=12),
                          name="rnn_rnn",
+                         learning_rate=0.0002,
                          grad_clip=5.0,
                          *args, **kwargs)
 
@@ -102,6 +103,7 @@ class EncDec(Trainer):
                                       *args, **kwargs),
                          DecoderAttRNN(data_dir, labels, beam_width=12),
                          name="enc_dec",
+                         learning_rate=0.0002,
                          grad_clip=5.0,
                          *args, **kwargs)
 
