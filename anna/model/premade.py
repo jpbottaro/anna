@@ -109,7 +109,7 @@ class EncDec(Trainer):
 
     def __repr__(self):
         return "EncDec - Recurrent network to analyze input, " + \
-               "sequence prediction with RNN and attention (GRU & Bahdanau)."
+               "sequence prediction with RNN and attention (GRU & Luong)."
 
 
 BEST = [AVGxBR, AVGxRNN, EncDec]
