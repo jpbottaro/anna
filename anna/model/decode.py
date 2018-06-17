@@ -384,15 +384,15 @@ class DecoderAttRNN(DecoderRNN):
     def build_cell(self, mem, mem_len, mem_fixed, mode):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
         batch_size = tf.shape(mem_fixed)[0]
-        cell = utils.rnn_cell(self.rnn_type,
-                              self.hidden_size,
-                              mode,
-                              self.dropout)
+
+        # Standard RNN cell
+        cell = utils.rnn_cell(self.rnn_type, self.hidden_size, mode)
 
         # Build initial state based on `mem_fixed`
         zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
 
+        # Beam search needs the init/mem/mem_len replicated per-beam
         if not is_training and self.beam_width > 0:
             init = s2s.tile_batch(init, multiplier=self.beam_width)
             mem = s2s.tile_batch(mem, multiplier=self.beam_width)
@@ -407,5 +407,11 @@ class DecoderAttRNN(DecoderRNN):
             attention_layer_size=self.hidden_size,
             initial_cell_state=init,
             name="attention")
+
+        if is_training and self.dropout > 0.:
+            cell = tf.nn.rnn_cell.DropoutWrapper(
+                cell=cell,
+                output_keep_prob=1. - self.dropout,
+            )
 
         return cell, cell.zero_state(batch_size, mem.dtype)

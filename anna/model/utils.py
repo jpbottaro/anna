@@ -30,7 +30,7 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
         keep_prob = (1. - dropout)
         cell = tf.nn.rnn_cell.DropoutWrapper(
             cell=cell,
-            input_keep_prob=keep_prob,
+            output_keep_prob=keep_prob,
         )
 
     if residual:
