@@ -69,13 +69,14 @@ def parse(bioasq_dir):
     bioasq_json = os.path.join(bioasq_dir, JSON_NAME)
     with open(bioasq_json) as f:
         for article in ijson.items(f, "articles.item"):
+            doc_id = article["pmid"]
             title = article["title"]
             text = article["abstractText"]
             journal = article["journal"]
             year = article["year"]
             labels = article["meshMajor"]
 
-            doc = Doc(title, journal, None, text, labels)
+            doc = Doc(doc_id, title, journal, None, text, labels)
 
             if year in TEST_YEARS:
                 test_docs.append(doc)

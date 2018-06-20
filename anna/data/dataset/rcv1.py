@@ -1,4 +1,4 @@
-"""Reads the RCV1-v2 dataset for Multi-label Clasification
+"""Reads the RCV1-v2 dataset for Multi-label Classification
 
 Important: Train and test sets are _switched_, since the original split leaves
 the sides unbalanced.
@@ -33,8 +33,7 @@ TOPICS_FINAL = "topics.dat"
 
 def fetch_and_parse(data_dir):
     """
-    Fetches and parses the RCV1-v2 dataset. The dataset is also cached
-    as a pickle for further calls.
+    Fetches and parses the RCV1-v2 dataset.
 
     Args:
         data_dir (str): absolute path to the dir where datasets are stored
@@ -92,7 +91,7 @@ def parse(rcv1_dir):
                     labels = list(topics[doc_id])
                     if is_train:
                         label_counts.update(labels)
-                    docs.append(Doc(None, None, None, text, labels))
+                    docs.append(Doc(doc_id, None, None, None, text, labels))
                     doc_id = None
                     text = None
                 elif line.startswith(".I"):

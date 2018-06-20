@@ -64,6 +64,7 @@ def parse(reuters_dir):
         with open(path, encoding="latin1") as fp:
             soup = BeautifulSoup(fp, "html5lib")
             for article in soup.find_all("reuters"):
+                doc_id = article.find("reuters")["newid"]
                 text = None
                 title = article.find("title")
                 if title:
@@ -80,7 +81,7 @@ def parse(reuters_dir):
 
                 labels = [t.get_text() for t in article.topics.find_all("d")]
 
-                doc = Doc(title, None, dateline, text, labels)
+                doc = Doc(doc_id, title, None, dateline, text, labels)
 
                 lewis_split = article.get("lewissplit")
                 is_topics = article.get("topics")

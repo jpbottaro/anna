@@ -4,16 +4,18 @@
 class Doc:
     """A document with all extracted information (e.g. labels attached)."""
 
-    def __init__(self, title, headline, dateline, text, labels):
+    def __init__(self, doc_id, title, headline, dateline, text, labels):
         """Create a document
 
         Args:
-            title (str, optional): doc's title
-            headline (str, optional): doc's headline (could be None)
-            dateline (str, optional): doc's title (could be None)
-            text (str): doc's text
-            labels (list[str]): labels attached to the doc
+            doc_id (str, optional): document id
+            title (str, optional): title (can be None)
+            headline (str, optional): headline (can be None)
+            dateline (str, optional): doc title (can be None)
+            text (str): text of the document
+            labels (list[str]): labels attached to the document
         """
+        self.doc_id = doc_id
         self.title = title
         self.headline = headline
         self.dateline = dateline

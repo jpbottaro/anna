@@ -38,8 +38,7 @@ TRAIN_DATES = \
 
 def fetch_and_parse(data_dir):
     """
-    Fetches and parses the RCV1-v2 dataset. The dataset is also cached
-    as a pickle for further calls.
+    Fetches and parses the Reuters dataset.
 
     Args:
         data_dir (str): absolute path to the dir where datasets are stored
@@ -108,6 +107,7 @@ def parse_file(path):
     with open(path, encoding="iso-8859-1") as fp:
         article = BeautifulSoup(fp, "html5lib")
 
+        doc_id = article.find("newsitem")["itemid"]
         title = article.find("title").get_text()
         text = article.find("text").get_text()
         headline = article.find("headline")
@@ -122,7 +122,7 @@ def parse_file(path):
             for topic in topics.find_all("code"):
                 labels.append(str(topic["code"]))
 
-        return Doc(title, headline, dateline, text, labels)
+        return Doc(doc_id, title, headline, dateline, text, labels)
 
 
 def fetch(data_dir):
@@ -134,7 +134,7 @@ def fetch(data_dir):
         data_dir (str): absolute path to the folder where datasets are stored
 
     Returns:
-        reutersl_dir (str): absolute path to the folder where datasets are stored
+        reuters_dir (str): absolute path to the folder where datasets are stored
     """
     # Create folder
     reuters_dir = os.path.join(data_dir, NAME)
