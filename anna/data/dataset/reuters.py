@@ -1,4 +1,4 @@
-"""Reads the Reuters dataset for Multi-label Clasification
+"""Reads the Reuters dataset for Multi-label Classification
 
 Important: Train and test sets are _switched_, since the original split leaves
 the sides unbalanced.

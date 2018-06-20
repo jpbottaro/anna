@@ -4,7 +4,7 @@ import os
 import sys
 import anna.model.premade as models
 import anna.data.dataset.reuters21578 as reuters
-import anna.data.dataset.reuters as rcv1
+import anna.data.dataset.fullrcv1 as rcv1
 import anna.data.dataset.bioasq as bioasq
 
 

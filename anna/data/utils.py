@@ -281,6 +281,7 @@ def mlc_tfrecords(folder, docs_creator):
 
     if not os.path.exists(train_path):
         train, test, unused, labels = docs_creator()
+        create_folder(folder)
 
         with open(labels_path, "wb") as f:
             pickle.dump(labels, f)
