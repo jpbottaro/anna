@@ -7,8 +7,7 @@ class AVGxBR(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderAvg(data_dir, input_limit=300,
-                                    *args, **kwargs),
+                         EncoderAvg(data_dir, input_limit=300),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
                          name="avg_br",
                          *args, **kwargs)
@@ -21,8 +20,7 @@ class MAXxBR(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderMax(data_dir, input_limit=300,
-                                    *args, **kwargs),
+                         EncoderMax(data_dir, input_limit=300),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
                          name="max_br",
                          *args, **kwargs)
@@ -36,7 +34,7 @@ class CNNxBR(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderCNN(data_dir, *args, **kwargs),
+                         EncoderCNN(data_dir),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
                          name="cnn_br",
                          batch_size=16,
@@ -51,8 +49,7 @@ class AVGxRNN(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderAvg(data_dir, input_limit=300,
-                                    *args, **kwargs),
+                         EncoderAvg(data_dir, input_limit=300),
                          DecoderRNN(data_dir, labels, beam_width=12),
                          name="avg_rnn",
                          grad_clip=5.0,
@@ -66,8 +63,7 @@ class RNNxBR(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300,
-                                      *args, **kwargs),
+                         EncoderBiRNN(data_dir, input_limit=300),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
                          name="rnn_br",
                          grad_clip=5.0,
@@ -82,8 +78,7 @@ class RNNxRNN(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300,
-                                      *args, **kwargs),
+                         EncoderBiRNN(data_dir, input_limit=300),
                          DecoderRNN(data_dir, labels, beam_width=12),
                          name="rnn_rnn",
                          learning_rate=0.0002,
@@ -99,8 +94,7 @@ class EncDec(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300,
-                                      *args, **kwargs),
+                         EncoderBiRNN(data_dir, input_limit=300),
                          DecoderAttRNN(data_dir, labels, beam_width=12),
                          name="enc_dec",
                          learning_rate=0.0002,

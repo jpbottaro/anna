@@ -36,8 +36,6 @@ class Encoder:
                  voc_size=100000,
                  oov_size=1000,
                  fixed_embeddings=False,
-                 lowercase=False,
-                 stem=False,
                  *args,
                  **kwargs):
         """
@@ -51,8 +49,6 @@ class Encoder:
             voc_size (int): nr of embeddings to store (i.e. size of vocabulary)
             oov_size (int): nr of buckets to use for out-of-vocabulary words
             fixed_embeddings (bool): whether the embeddings should be trained
-            lowercase (bool): whether the word vocabulary should be lowercase
-            stem (bool): whether the word vocabulary should be stemmed
         """
         if not input_names:
             input_names = ["title", "text"]
@@ -65,9 +61,7 @@ class Encoder:
 
         # Fetch pre-trained word embeddings
         self.words, self.emb = embeddings.fetch_and_parse(data_dir,
-                                                          voc_size=voc_size,
-                                                          lowercase=lowercase,
-                                                          stem=stem)
+                                                          voc_size=voc_size)
 
         if oov_size > 0:
             extra_emb = np.random.uniform(-.1, .1, size=[oov_size,

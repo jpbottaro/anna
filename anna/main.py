@@ -4,7 +4,7 @@ import os
 import sys
 import anna.model.premade as models
 import anna.data.dataset.reuters21578 as reuters
-import anna.data.dataset.rcv1 as rcv1
+import anna.data.dataset.reuters as rcv1
 import anna.data.dataset.bioasq as bioasq
 
 
@@ -23,8 +23,6 @@ if __name__ == "__main__":
         val_size = 777
         epochs = 40
         shuffle = 10000
-        lowercase = False
-        stem = False
         input_names = ["title", "text"]
     elif dataset == "rcv1":
         data = rcv1
@@ -32,8 +30,6 @@ if __name__ == "__main__":
         val_size = 75000
         epochs = 5
         shuffle = 750000
-        lowercase = True
-        stem = True
         input_names = ["text"]
     elif dataset == "bioasq":
         data = bioasq
@@ -41,8 +37,6 @@ if __name__ == "__main__":
         val_size = 100000
         epochs = 2
         shuffle = 1000000
-        lowercase = False
-        stem = False
         input_names = ["title", "text"]
     else:
         raise ValueError("Unknown dataset: {}".format(dataset))
@@ -57,9 +51,7 @@ if __name__ == "__main__":
         # Create default trainer
         model = builder(data_dir, labels,
                         input_names=input_names,
-                        folder_name=folder,
-                        lowercase=lowercase,
-                        stem=stem)
+                        folder_name=folder)
 
         # Train and evaluate
         print("Model: {}".format(model))

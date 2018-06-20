@@ -6,4 +6,3 @@ pandas
 jupyter
 ijson
 tabulate
-porter2stemmer
