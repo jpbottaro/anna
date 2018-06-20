@@ -108,7 +108,9 @@ class DecoderRNN(Decoder):
                  rnn_type="gru",
                  bridge=DenseBridge(),
                  dropout=.2,
-                 beam_width=0):
+                 beam_width=0,
+                 attention=None,
+                 loss=tf.nn.sparse_softmax_cross_entropy_with_logits):
         """
         Creates the sequence prediction decoder.
 
@@ -122,6 +124,9 @@ class DecoderRNN(Decoder):
             bridge (Bridge): how to hook the input to the RNN state.
             dropout (float): rate of dropout to apply (0 to disable).
             beam_width (int): size of the beam search beam (0 to disable).
+            attention (tf.contrib.seq2seq.AttentionMechanism): the attention
+              mechanism to use (e.g. LuongAttention)
+            loss (func): function that returns the loss for the model.
         """
         _ = data_dir
 
@@ -132,6 +137,8 @@ class DecoderRNN(Decoder):
         self.dropout = dropout
         self.bridge = bridge
         self.beam_width = beam_width
+        self.attention = attention
+        self.loss = loss
 
         special_labels = ["_PAD_", "_SOS_", "_EOS_"]
         self.voc = special_labels + label_voc
@@ -230,9 +237,9 @@ class DecoderRNN(Decoder):
                                         dtype=logits.dtype)
 
                 # [batch, steps, n_classes]
-                loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    labels=target, logits=logits)
+                loss = self.loss(labels=target, logits=logits)
 
+                # scalar
                 loss = tf.reduce_sum(loss * mask) / tf.to_float(batch_size)
 
         return predictions, loss
@@ -345,6 +352,21 @@ class DecoderRNN(Decoder):
         return predictions[:, self.n_special:]
 
     def build_cell(self, mem, mem_len, mem_fixed, mode):
+        """
+        Builds the RNN cell that will drive the decoder.
+
+        Args:
+            mem (tf.Tensor): sequential representation of the input.
+              [batch, sum(len), size]
+            mem_len (tf.Tensor): length of `mem`.
+              [batch]
+            mem_fixed (tf.Tensor): fixed-sized representation of the input.
+              [batch, size]
+            mode (tf.estimator.ModeKeys): the mode we are on
+
+        Returns:
+            cell (tf.nn.rnn_cell.RNNCell): the final RNN cell
+        """
         is_training = mode == tf.estimator.ModeKeys.TRAIN
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
@@ -358,60 +380,20 @@ class DecoderRNN(Decoder):
 
         if not is_training and self.beam_width > 0:
             init = s2s.tile_batch(init, multiplier=self.beam_width)
-
-        return cell, init
-
-
-class DecoderAttRNN(DecoderRNN):
-    """
-    Decoder as a sequence prediction, where a new label is predicted at each
-    time step (until a special end labels is produced).
-
-    An attention mechanism is used to retrieve the important information at each
-    time step from the encoder.
-    """
-
-    def __init__(self,
-                 data_dir,
-                 label_voc,
-                 attention=s2s.LuongAttention,
-                 *args,
-                 **kwargs):
-        super().__init__(data_dir, label_voc, *args, **kwargs)
-
-        self.attention = attention
-
-    def build_cell(self, mem, mem_len, mem_fixed, mode):
-        is_training = mode == tf.estimator.ModeKeys.TRAIN
-        batch_size = tf.shape(mem_fixed)[0]
-
-        # Standard RNN cell
-        cell = utils.rnn_cell(self.rnn_type, self.hidden_size, mode)
-
-        # Build initial state based on `mem_fixed`
-        zero_state = cell.zero_state(batch_size, mem.dtype)
-        init = self.bridge(zero_state, mem_fixed)
-
-        # Beam search needs the init/mem/mem_len replicated per-beam
-        if not is_training and self.beam_width > 0:
-            init = s2s.tile_batch(init, multiplier=self.beam_width)
             mem = s2s.tile_batch(mem, multiplier=self.beam_width)
             mem_len = s2s.tile_batch(mem_len, multiplier=self.beam_width)
             batch_size *= self.beam_width
 
-        att_mechanism = self.attention(self.hidden_size, mem, mem_len)
+        if self.attention:
+            att_mechanism = self.attention(self.hidden_size, mem, mem_len)
 
-        cell = s2s.AttentionWrapper(
-            cell,
-            att_mechanism,
-            attention_layer_size=self.hidden_size,
-            initial_cell_state=init,
-            name="attention")
+            cell = s2s.AttentionWrapper(
+                cell,
+                att_mechanism,
+                attention_layer_size=self.hidden_size,
+                initial_cell_state=init,
+                name="attention")
 
-        if is_training and self.dropout > 0.:
-            cell = tf.nn.rnn_cell.DropoutWrapper(
-                cell=cell,
-                output_keep_prob=1. - self.dropout,
-            )
+            init = cell.zero_state(batch_size, mem.dtype)
 
-        return cell, cell.zero_state(batch_size, mem.dtype)
+        return cell, init
