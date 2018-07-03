@@ -394,6 +394,12 @@ class DecoderRNN(Decoder):
                 initial_cell_state=init,
                 name="attention")
 
+            if is_training and self.dropout > 0.:
+                cell = tf.nn.rnn_cell.DropoutWrapper(
+                    cell=cell,
+                    output_keep_prob=1. - self.dropout
+                )
+
             init = cell.zero_state(batch_size, mem.dtype)
 
         return cell, init
