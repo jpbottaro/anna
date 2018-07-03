@@ -23,21 +23,18 @@ if __name__ == "__main__":
         val_size = 777
         epochs = 40
         shuffle = 10000
-        input_names = ["title", "text"]
     elif dataset == "rcv1":
         data = rcv1
         folder = "model-rcv1"
         val_size = 75000
         epochs = 5
         shuffle = 750000
-        input_names = ["text"]
     elif dataset == "bioasq":
         data = bioasq
         folder = "model-bioasq"
         val_size = 100000
         epochs = 2
         shuffle = 1000000
-        input_names = ["title", "text"]
     else:
         raise ValueError("Unknown dataset: {}".format(dataset))
 
@@ -49,9 +46,7 @@ if __name__ == "__main__":
 
     for builder in models.BEST:
         # Create default trainer
-        model = builder(data_dir, labels,
-                        input_names=input_names,
-                        folder_name=folder)
+        model = builder(data_dir, labels, folder_name=folder)
 
         # Train and evaluate
         print("Model: {}".format(model))
