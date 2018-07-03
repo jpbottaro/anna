@@ -94,8 +94,11 @@ class EncDec(Trainer):
     def __init__(self, data_dir, labels, *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300),
+                         EncoderBiRNN(data_dir,
+                                      dropout=0.5,
+                                      input_limit=300),
                          DecoderRNN(data_dir, labels,
+                                    dropout=0.5,
                                     attention=tf.contrib.seq2seq.LuongAttention,
                                     beam_width=12),
                          name="enc_dec",
