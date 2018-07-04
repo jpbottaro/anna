@@ -5,20 +5,21 @@ import tensorflow as tf
 from collections import defaultdict
 
 
-def get_metrics(events_path):
+def get_metrics(events_paths):
     """
     Parses the given `events_path` file, extracting all tagged metrics.
 
     Args:
-        events_path (str): the path to an tfevents file
+        events_paths (list[str]): the paths to an tfevents files
 
     Returns:
         result (dict): keys are metric names, values are lists of (step, value)
     """
     result = defaultdict(list)
-    for e in tf.train.summary_iterator(events_path):
-        for v in e.summary.value:
-            result[v.tag].append((e.step, v.simple_value))
+    for p in events_paths:
+        for e in tf.train.summary_iterator(p):
+            for v in e.summary.value:
+                result[v.tag].append((e.step, v.simple_value))
 
     return result
 
@@ -79,17 +80,25 @@ def find_events(path):
         path (str): a path that contains a model run
 
     Returns:
-        events_path (str): path to the tfevents file
+        events_paths (list[str]): paths to the tfevents file
 
     Raises:
         ValueError if no events file is found, or more than 1 exists
     """
     events = [e.path for e in os.scandir(path) if "events.out" in e.name]
 
-    if len(events) != 1:
+    if len(events) == 0:
         raise ValueError("The given path has no events file: {}".format(path))
 
-    return events[0]
+    def events_sort_key(path):
+        # Get the number in the path
+        start = path.find("events.out.tfevents")
+        start += len("events.out.tfevents.")
+        end = path.find(".", start)
+
+        return int(path[start:end])
+
+    return sorted(events, key=events_sort_key)
 
 
 if __name__ == "__main__":
