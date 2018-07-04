@@ -4,12 +4,16 @@ from anna.model.decode import *
 
 
 class AVGxBR(Trainer):
-    def __init__(self, data_dir, labels, *args, **kwargs):
+    def __init__(self, data_dir, labels, dropout=.5, name="avg_br",
+                 *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderAvg(data_dir, input_limit=300),
-                         DecoderBR(data_dir, len(labels), [1024, 1024]),
-                         name="avg_br",
+                         DecoderBR(data_dir,
+                                   len(labels),
+                                   [1024, 1024],
+                                   dropout=dropout),
+                         name=name,
                          *args, **kwargs)
 
     def __repr__(self):
@@ -17,12 +21,16 @@ class AVGxBR(Trainer):
 
 
 class MAXxBR(Trainer):
-    def __init__(self, data_dir, labels, *args, **kwargs):
+    def __init__(self, data_dir, labels, dropout=.5, name="max_br",
+                 *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderMax(data_dir, input_limit=300),
-                         DecoderBR(data_dir, len(labels), [1024, 1024]),
-                         name="max_br",
+                         DecoderBR(data_dir,
+                                   len(labels),
+                                   [1024, 1024],
+                                   dropout=dropout),
+                         name=name,
                          *args, **kwargs)
 
     def __repr__(self):
@@ -31,12 +39,16 @@ class MAXxBR(Trainer):
 
 
 class CNNxBR(Trainer):
-    def __init__(self, data_dir, labels, *args, **kwargs):
+    def __init__(self, data_dir, labels, dropout=.5, name="cnn_br",
+                 *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderCNN(data_dir),
-                         DecoderBR(data_dir, len(labels), [1024, 1024]),
-                         name="cnn_br",
+                         DecoderBR(data_dir,
+                                   len(labels),
+                                   [1024, 1024],
+                                   dropout=dropout),
+                         name=name,
                          batch_size=16,
                          *args, **kwargs)
 
@@ -46,12 +58,12 @@ class CNNxBR(Trainer):
 
 
 class AVGxRNN(Trainer):
-    def __init__(self, data_dir, labels, *args, **kwargs):
+    def __init__(self, data_dir, labels, name="avg_rnn", *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderAvg(data_dir, input_limit=300),
                          DecoderRNN(data_dir, labels, beam_width=12),
-                         name="avg_rnn",
+                         name=name,
                          grad_clip=5.0,
                          *args, **kwargs)
 
@@ -60,12 +72,12 @@ class AVGxRNN(Trainer):
 
 
 class RNNxBR(Trainer):
-    def __init__(self, data_dir, labels, *args, **kwargs):
+    def __init__(self, data_dir, labels, name="rnn_br", *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir, input_limit=300),
                          DecoderBR(data_dir, len(labels), [1024, 1024]),
-                         name="rnn_br",
+                         name=name,
                          grad_clip=5.0,
                          *args, **kwargs)
 
@@ -75,12 +87,12 @@ class RNNxBR(Trainer):
 
 
 class RNNxRNN(Trainer):
-    def __init__(self, data_dir, labels, *args, **kwargs):
+    def __init__(self, data_dir, labels, name="rnn_rnn", *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir, input_limit=300),
                          DecoderRNN(data_dir, labels, beam_width=12),
-                         name="rnn_rnn",
+                         name=name,
                          learning_rate=0.0002,
                          grad_clip=5.0,
                          *args, **kwargs)
@@ -91,7 +103,7 @@ class RNNxRNN(Trainer):
 
 
 class EncDec(Trainer):
-    def __init__(self, data_dir, labels, *args, **kwargs):
+    def __init__(self, data_dir, labels, name="enc_dec", *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir,
@@ -101,7 +113,7 @@ class EncDec(Trainer):
                                     dropout=0.5,
                                     attention=tf.contrib.seq2seq.LuongAttention,
                                     beam_width=12),
-                         name="enc_dec",
+                         name=name,
                          learning_rate=0.0002,
                          grad_clip=5.0,
                          *args, **kwargs)
