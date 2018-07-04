@@ -4,14 +4,21 @@ from anna.model.decode import *
 
 
 class AVGxBR(Trainer):
-    def __init__(self, data_dir, labels, dropout=.5, name="avg_br",
-                 *args, **kwargs):
+    def __init__(self,
+                 data_dir,
+                 labels,
+                 layers=2,
+                 hidden_size=1024,
+                 dropout=.5,
+                 name="avg_br",
+                 *args,
+                 **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderAvg(data_dir, input_limit=300),
                          DecoderBR(data_dir,
                                    len(labels),
-                                   [1024, 1024],
+                                   [hidden_size] * layers,
                                    dropout=dropout),
                          name=name,
                          *args, **kwargs)
@@ -21,14 +28,21 @@ class AVGxBR(Trainer):
 
 
 class MAXxBR(Trainer):
-    def __init__(self, data_dir, labels, dropout=.5, name="max_br",
-                 *args, **kwargs):
+    def __init__(self,
+                 data_dir,
+                 labels,
+                 layers=2,
+                 hidden_size=1024,
+                 dropout=.5,
+                 name="max_br",
+                 *args,
+                 **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderMax(data_dir, input_limit=300),
                          DecoderBR(data_dir,
                                    len(labels),
-                                   [1024, 1024],
+                                   [hidden_size] * layers,
                                    dropout=dropout),
                          name=name,
                          *args, **kwargs)
@@ -39,14 +53,21 @@ class MAXxBR(Trainer):
 
 
 class CNNxBR(Trainer):
-    def __init__(self, data_dir, labels, dropout=.5, name="cnn_br",
-                 *args, **kwargs):
+    def __init__(self,
+                 data_dir,
+                 labels,
+                 layers=2,
+                 hidden_size=1024,
+                 dropout=.5,
+                 name="cnn_br",
+                 *args,
+                 **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderCNN(data_dir),
                          DecoderBR(data_dir,
                                    len(labels),
-                                   [1024, 1024],
+                                   [hidden_size] * layers,
                                    dropout=dropout),
                          name=name,
                          batch_size=16,
