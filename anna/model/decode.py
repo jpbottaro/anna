@@ -42,7 +42,7 @@ class Decoder:
 
 class DecoderBR(Decoder):
 
-    def __init__(self, data_dir, n_classes, hidden_units):
+    def __init__(self, data_dir, n_classes, hidden_units, dropout=.5):
         """
         Binary Relevance decoder, where each label is an independent
         binary prediction.
@@ -51,11 +51,13 @@ class DecoderBR(Decoder):
             data_dir (str): path to the data folder
             n_classes (int): number of classes to predict
             hidden_units (list[int]): size of each layer of the FFNN
+            dropout (float): dropout rate for each layer
         """
         _ = data_dir
 
         self.n_classes = n_classes
         self.hidden_units = hidden_units
+        self.dropout = dropout
 
     def __call__(self, mem, mem_len, mem_fixed, labels, mode):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
@@ -64,11 +66,15 @@ class DecoderBR(Decoder):
         with tf.name_scope("decoder"):
             # Add all layers of the MLP
             for i, units in enumerate(self.hidden_units):
-                net = tf.layers.dropout(net, training=is_training)
+                net = tf.layers.dropout(net,
+                                        rate=self.dropout,
+                                        training=is_training)
                 net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
 
             # Compute logits (1 per class)
-            net = tf.layers.dropout(net, training=is_training)
+            net = tf.layers.dropout(net,
+                                    rate=self.dropout,
+                                    training=is_training)
             logits = tf.layers.dense(net, self.n_classes, activation=None)
 
             # Compute predictions as independent confidences
