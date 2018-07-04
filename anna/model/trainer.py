@@ -68,7 +68,7 @@ class Trainer:
             })
 
     def train(self, docs, test_docs=None,
-              val_size=500, shuffle=10000, epochs=10):
+              val_size=500, shuffle=10000, epochs=10, repeat=1):
         """
         Train model on `docs`, and run evaluations on `test_docs`.
 
@@ -82,12 +82,14 @@ class Trainer:
             val_size (int): size of the validation set, in nr of docs
             shuffle (int): size of the buffer use to shuffle the training set
             epochs (int): max number of epochs to run
+            repeat (int): how many times to repeat the training data per epoch
         """
 
         def train_input():
             return input_fn(docs.skip(val_size),
                             batch_size=self.batch_size,
-                            shuffle=shuffle)
+                            shuffle=shuffle,
+                            repeat=repeat)
 
         def val_input():
             return input_fn(docs.take(val_size), batch_size=self.batch_size)
