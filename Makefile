@@ -26,7 +26,7 @@ tb: venv
 	@.venv/bin/tensorboard --logdir data/model
 
 notebook: venv
-	@.venv/bin/jupyter notebook --notebook-dir=notebook
+	@.venv/bin/jupyter notebook --notebook-dir=notebook --no-browser
 
 clean:
 	rm -rf .venv
