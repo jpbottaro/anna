@@ -270,7 +270,7 @@ class EncoderRNN(Encoder):
                  data_dir,
                  rnn_type="gru",
                  hidden_size=1024,
-                 dropout=.2,
+                 dropout=.3,
                  *args,
                  **kwargs):
         super().__init__(data_dir, *args, **kwargs)

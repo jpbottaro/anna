@@ -113,7 +113,7 @@ class DecoderRNN(Decoder):
                  emb_size=256,
                  rnn_type="gru",
                  bridge=DenseBridge(),
-                 dropout=.2,
+                 dropout=.3,
                  beam_width=0,
                  attention=None,
                  loss=tf.nn.sparse_softmax_cross_entropy_with_logits):
