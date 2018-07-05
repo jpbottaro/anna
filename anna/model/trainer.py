@@ -68,7 +68,7 @@ class Trainer:
             })
 
     def train(self, docs, test_docs=None,
-              val_size=500, shuffle=10000, epochs=10, repeat=1):
+              val_size=500, shuffle=10000, epochs=10, eval_every=200):
         """
         Train model on `docs`, and run evaluations on `test_docs`.
 
@@ -82,14 +82,14 @@ class Trainer:
             val_size (int): size of the validation set, in nr of docs
             shuffle (int): size of the buffer use to shuffle the training set
             epochs (int): max number of epochs to run
-            repeat (int): how many times to repeat the training data per epoch
+            eval_every (int): number of training steps to wait for each eval
         """
 
         def train_input():
             return input_fn(docs.skip(val_size),
                             batch_size=self.batch_size,
                             shuffle=shuffle,
-                            repeat=repeat)
+                            repeat=epochs)
 
         def val_input():
             return input_fn(docs.take(val_size), batch_size=self.batch_size)
@@ -97,15 +97,23 @@ class Trainer:
         def test_input():
             return input_fn(test_docs, batch_size=self.batch_size)
 
-        for i in range(epochs):
-            print("Starting epoch #{}".format(i))
-            self.estimator.train(input_fn=train_input)
-            if val_size:
-                val_m = self.estimator.evaluate(val_input, name="val")
-                metrics.display("val", val_m)
-            if test_docs:
-                test_m = self.estimator.evaluate(test_input, name="test")
-                metrics.display("test", test_m)
+        hooks = []
+        if val_size:
+            hooks.append(MyValidationHook(
+                True,
+                self.estimator,
+                val_input,
+                name="val",
+                every_n_iter=eval_every))
+        if test_docs:
+            hooks.append(MyValidationHook(
+                False,
+                self.estimator,
+                test_input,
+                name="test",
+                every_n_iter=eval_every))
+
+        self.estimator.train(input_fn=train_input, hooks=hooks)
 
 
 def input_fn(docs, batch_size=64, shuffle=None, repeat=None):
@@ -252,3 +260,35 @@ def clip_gradients(gradients, max_norm):
     tf.summary.scalar("misc/clipped_gradient", tf.global_norm(gradients))
 
     return gradients
+
+
+class MyValidationHook(tf.contrib.estimator.InMemoryEvaluatorHook):
+
+    def __init__(self,
+                 show_legend=False,
+                 *args,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+        self._show_legend = show_legend
+
+    def begin(self):
+        super().begin()
+        self._timer.update_last_triggered_step(0)
+
+    def after_run(self, run_context, run_values):
+        self._iter_count += 1
+        if self._timer.should_trigger_for_step(self._iter_count):
+            self._timer.update_last_triggered_step(self._iter_count)
+
+            if self._show_legend:
+                print("Evaluating iteration: {}".format(self._iter_count))
+
+            m = self._evaluate(run_context.session)
+            metrics.display(self._name, m)
+
+    def end(self, session):
+        if self._show_legend:
+            print("Evaluating final model")
+
+        m = self._evaluate(session)
+        metrics.display(self._name, m)
