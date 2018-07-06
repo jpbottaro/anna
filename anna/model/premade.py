@@ -108,11 +108,12 @@ class RNNxBR(Trainer):
 
 
 class RNNxRNN(Trainer):
-    def __init__(self, data_dir, labels, name="rnn_rnn", *args, **kwargs):
+    def __init__(self, data_dir, labels, beam_width=12, name="rnn_rnn",
+                 *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir, input_limit=300),
-                         DecoderRNN(data_dir, labels, beam_width=12),
+                         DecoderRNN(data_dir, labels, beam_width=beam_width),
                          name=name,
                          learning_rate=0.0002,
                          grad_clip=5.0,
@@ -124,13 +125,14 @@ class RNNxRNN(Trainer):
 
 
 class EncDec(Trainer):
-    def __init__(self, data_dir, labels, name="enc_dec", *args, **kwargs):
+    def __init__(self, data_dir, labels, beam_width=12, name="enc_dec",
+                 *args, **kwargs):
         super().__init__(data_dir,
                          labels,
                          EncoderBiRNN(data_dir, input_limit=300),
                          DecoderRNN(data_dir, labels,
                                     attention=tf.contrib.seq2seq.LuongAttention,
-                                    beam_width=12),
+                                    beam_width=beam_width),
                          name=name,
                          learning_rate=0.0002,
                          grad_clip=5.0,
