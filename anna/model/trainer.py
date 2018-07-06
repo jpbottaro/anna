@@ -68,7 +68,7 @@ class Trainer:
             })
 
     def train(self, docs, test_docs=None,
-              val_size=500, shuffle=10000, epochs=10, eval_every=200):
+              val_size=500, shuffle=10000, epochs=10, eval_every=100):
         """
         Train model on `docs`, and run evaluations on `test_docs`.
 
