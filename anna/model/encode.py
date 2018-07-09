@@ -20,7 +20,6 @@ unit).
 import numpy as np
 import tensorflow as tf
 import anna.model.utils as utils
-import anna.data.utils as datautils
 import anna.data.dataset.glove as glove
 import anna.data.dataset.fasttext as fasttext
 
