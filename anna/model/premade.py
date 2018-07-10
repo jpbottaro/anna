@@ -7,6 +7,7 @@ class AVGxBR(Trainer):
     def __init__(self,
                  data_dir,
                  labels,
+                 input_limit=300,
                  layers=2,
                  hidden_size=2048,
                  dropout=.5,
@@ -18,7 +19,7 @@ class AVGxBR(Trainer):
                          labels,
                          EncoderAvg(data_dir,
                                     pretrained_embeddings=pretrained_embeddings,
-                                    input_limit=300),
+                                    input_limit=input_limit),
                          DecoderBR(data_dir,
                                    len(labels),
                                    [hidden_size] * layers,
@@ -34,6 +35,7 @@ class MAXxBR(Trainer):
     def __init__(self,
                  data_dir,
                  labels,
+                 input_limit=300,
                  layers=2,
                  hidden_size=2048,
                  dropout=.5,
@@ -42,7 +44,7 @@ class MAXxBR(Trainer):
                  **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderMax(data_dir, input_limit=300),
+                         EncoderMax(data_dir, input_limit=input_limit),
                          DecoderBR(data_dir,
                                    len(labels),
                                    [hidden_size] * layers,
@@ -82,10 +84,13 @@ class CNNxBR(Trainer):
 
 
 class AVGxRNN(Trainer):
-    def __init__(self, data_dir, labels, name="avg_rnn", *args, **kwargs):
+    def __init__(self, data_dir, labels,
+                 input_limit=300,
+                 name="avg_br",
+                 *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderAvg(data_dir, input_limit=300),
+                         EncoderAvg(data_dir, input_limit=input_limit),
                          DecoderRNN(data_dir, labels, beam_width=12),
                          name=name,
                          grad_clip=5.0,
@@ -96,11 +101,18 @@ class AVGxRNN(Trainer):
 
 
 class RNNxBR(Trainer):
-    def __init__(self, data_dir, labels, name="rnn_br", *args, **kwargs):
+    def __init__(self, data_dir, labels,
+                 input_limit=300,
+                 layers=2,
+                 hidden_size=2048,
+                 name="rnn_br",
+                 *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300),
-                         DecoderBR(data_dir, len(labels), [2048, 2048]),
+                         EncoderBiRNN(data_dir, input_limit=input_limit),
+                         DecoderBR(data_dir,
+                                   len(labels),
+                                   [hidden_size] * layers),
                          name=name,
                          grad_clip=5.0,
                          *args, **kwargs)
@@ -111,11 +123,14 @@ class RNNxBR(Trainer):
 
 
 class RNNxRNN(Trainer):
-    def __init__(self, data_dir, labels, beam_width=12, name="rnn_rnn",
+    def __init__(self, data_dir, labels,
+                 input_limit=300,
+                 beam_width=12,
+                 name="rnn_rnn",
                  *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300),
+                         EncoderBiRNN(data_dir, input_limit=input_limit),
                          DecoderRNN(data_dir, labels, beam_width=beam_width),
                          name=name,
                          learning_rate=0.0002,
@@ -128,11 +143,14 @@ class RNNxRNN(Trainer):
 
 
 class EncDec(Trainer):
-    def __init__(self, data_dir, labels, beam_width=12, name="enc_dec",
+    def __init__(self, data_dir, labels,
+                 input_limit=300,
+                 beam_width=12,
+                 name="enc_dec",
                  *args, **kwargs):
         super().__init__(data_dir,
                          labels,
-                         EncoderBiRNN(data_dir, input_limit=300),
+                         EncoderBiRNN(data_dir, input_limit=input_limit),
                          DecoderRNN(data_dir, labels,
                                     attention=tf.contrib.seq2seq.LuongAttention,
                                     beam_width=beam_width),
