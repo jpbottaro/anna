@@ -57,12 +57,9 @@ def parse_model(model_dir):
         result (dict): keys are train/val/test, values are dictionaries of
           metrics and their values (output of `get_metrics()`).
     """
-    try:
-        train_events = find_events(model_dir)
-        val_events = find_events(os.path.join(model_dir, "eval_val"))
-        test_events = find_events(os.path.join(model_dir, "eval_test"))
-    except FileNotFoundError:
-        return None
+    train_events = find_events(model_dir)
+    val_events = find_events(os.path.join(model_dir, "eval_val"))
+    test_events = find_events(os.path.join(model_dir, "eval_test"))
 
     return {
         "train": get_metrics(train_events),
@@ -85,10 +82,10 @@ def find_events(path):
     Raises:
         ValueError if no events file is found, or more than 1 exists
     """
-    events = [e.path for e in os.scandir(path) if "events.out" in e.name]
-
-    if len(events) == 0:
-        raise ValueError("The given path has no events file: {}".format(path))
+    try:
+        events = [e.path for e in os.scandir(path) if "events.out" in e.name]
+    except FileNotFoundError:
+        return []
 
     def events_sort_key(path):
         # Get the number in the path
