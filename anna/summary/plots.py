@@ -16,6 +16,20 @@ for i in range(len(COLORS)):
 
 
 def subplots(nrows=1, ncols=1, figsize=None, xlabel=None, ylabel=None):
+    """
+    Creates subplots from matplotlib.
+
+    Args:
+        nrows (int):
+        ncols (int):
+        figsize (tuple[int, int]):
+        xlabel (str):
+        ylabel (str):
+
+    Returns:
+        fig (matplotlib.figure.Figure): the matplotlib figure
+        ax (matplotlib.Axes or list[matplotlib.Axes]): axes for the subplot
+    """
     plt.rc("font", size=20)
     pre, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
 
@@ -34,6 +48,16 @@ def subplots(nrows=1, ncols=1, figsize=None, xlabel=None, ylabel=None):
 
 
 def plot(ax, x, y, label=None, color=None):
+    """
+    Plots the given `x` and `y` into `ax`. Optionally adds a label and a color.
+
+    Args:
+        ax (matplotlib.Axis): matplotlib's axis
+        x (list[float]): list of values for the `x` axis
+        y (list[float]): list of values for the `y` axis
+        label (str): name for the line plot
+        color (int or None): number for a color, or None to chose automatically
+    """
     if color is None:
         color = COLORS[ax.color_nr]
         ax.color_nr += 1
@@ -41,3 +65,25 @@ def plot(ax, x, y, label=None, color=None):
         color = COLORS[color]
 
     ax.plot(x, y, color=color, label=label)
+
+
+def moving_average(ys, window=5):
+    """
+    Calculates moving average window of the given list of values.
+
+    Args:
+        ys (list[float]): list of values
+        window (int): size of the window
+
+    Returns:
+        values (list[float]): list of values as moving average from `ys`. Same
+          size as `ys`.
+    """
+    values = []
+    result = []
+    for y in ys:
+        values.append(y)
+        if len(values) > window:
+            values = values[1:]
+        result.append(sum(values) / len(values))
+    return result
