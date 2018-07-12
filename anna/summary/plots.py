@@ -67,7 +67,7 @@ def plot(ax, x, y, label=None, color=None):
     ax.plot(x, y, color=color, label=label)
 
 
-def moving_average(ys, window=5):
+def moving_average(ys, window=6):
     """
     Calculates moving average window of the given list of values.
 
