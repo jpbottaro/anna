@@ -39,7 +39,7 @@ def keep_step(metrics, step):
     return result
 
 
-def best_step(metrics, target_metric="loss", lowest=True):
+def best_step(metrics, target_metric="loss", target_run="dev", lowest=True):
     """
     Finds the best step that optimizes `target_metric` on the validation set.
 
@@ -59,7 +59,7 @@ def best_step(metrics, target_metric="loss", lowest=True):
         best (dict): the test metrics, keeping only the best step according to
           the validation, e.g. {"loss": 0.2, "acc": 0.5}
     """
-    values = metrics["val"][target_metric]
+    values = metrics[target_run][target_metric]
 
     if len(values) == 0:
         raise ValueError("No metrics to analyze for: {}".format(target_metric))
@@ -72,7 +72,7 @@ def best_step(metrics, target_metric="loss", lowest=True):
             best_s = s
             best_v = v
 
-    return keep_step(metrics["test"], best_s)
+    return {k: keep_step(v, best_s) for k, v in metrics.items()}
 
 
 def latex_name(model_name):
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     # Pick best step using validation, and display results in test
     table = []
     for model, metrics in all_metrics.items():
-        best = best_step(metrics, "perf/accuracy", False)
+        best = best_step(metrics, "perf/accuracy", False)["test"]
         table.append([latex_name(model)] + [best[k] for k in keys])
 
     # Highlight best result of each column
