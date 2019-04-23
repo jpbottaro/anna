@@ -186,7 +186,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
     # (batch)
     with tf.name_scope("length"):
         x_len = tf.reduce_sum(x_mask, 1)
-        x_len = tf.to_int32(x_len)
+        x_len = tf.cast(x_len, tf.int32)
 
     with tf.name_scope("embed"):
         # Convert strings to ids
@@ -197,10 +197,10 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
             num_oov_buckets=oov_size).lookup(x)
 
         # Count how many out-of-vocabulary (OOV) words are in the input
-        num_oov = tf.to_float(x) * x_mask
+        num_oov = tf.cast(x, tf.float32) * x_mask
         num_oov = tf.logical_or(tf.equal(num_oov, 1),
                                 tf.greater_equal(num_oov, len(words)))
-        num_oov = tf.reduce_sum(tf.to_float(num_oov), axis=1)
+        num_oov = tf.reduce_sum(tf.cast(num_oov, tf.float32), axis=1)
 
         # Replace with embeddings
         # (batch, input_limit, emb_size)
@@ -224,7 +224,7 @@ class EncoderAvg(Encoder):
     def encode(self, x, x_len, mode, name):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
-        div = tf.to_float(x_len[:, tf.newaxis])
+        div = tf.cast(x_len[:, tf.newaxis], tf.float32)
         result = tf.reduce_sum(x, 1) / tf.maximum(div, tf.ones_like(div))
         return x, x_len, result
 

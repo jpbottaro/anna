@@ -246,7 +246,10 @@ class DecoderRNN(Decoder):
                 loss = self.loss(labels=target, logits=logits)
 
                 # scalar
-                loss = tf.reduce_sum(loss * mask) / tf.to_float(batch_size)
+                loss = tf.reduce_sum(loss * mask)
+
+                # normalize by batch size
+                loss /= tf.cast(batch_size, tf.float32)
 
         return predictions, loss
 
@@ -271,7 +274,7 @@ class DecoderRNN(Decoder):
         # labels:  (batch, n_labels)      ~ [[0, 1, 1], [1, 0, 0]]
         # mask:    (batch, max_steps - 1) ~ [[1, 1, 0], [1, 0, 0]]
         # indices: (batch, max_steps - 1) ~ [[1, 2, 0], [0, 1, 2]]
-        labels = tf.to_int32(labels)
+        labels = tf.cast(labels, tf.int32)
         mask, indices = tf.nn.top_k(labels, k=self.max_steps - 1)
 
         # Fix index indices to account for special labels

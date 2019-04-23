@@ -99,15 +99,13 @@ class Trainer:
 
         hooks = []
         if val_size:
-            hooks.append(MyValidationHook(
-                True,
+            hooks.append(tf.estimator.experimental.InMemoryEvaluatorHook(
                 self.estimator,
                 val_input,
                 name="val",
                 every_n_iter=eval_every))
         if test_docs:
-            hooks.append(MyValidationHook(
-                False,
+            hooks.append(tf.estimator.experimental.InMemoryEvaluatorHook(
                 self.estimator,
                 test_input,
                 name="test",
@@ -260,46 +258,3 @@ def clip_gradients(gradients, max_norm):
     tf.summary.scalar("misc/clipped_gradient", tf.global_norm(gradients))
 
     return gradients
-
-
-class MyValidationHook(tf.contrib.estimator.InMemoryEvaluatorHook):
-
-    def __init__(self,
-                 show_legend=False,
-                 *args,
-                 **kwargs):
-        super().__init__(*args, **kwargs)
-        self._show_legend = show_legend
-        self._first_eval = False
-
-    def begin(self):
-        super().begin()
-        self._timer.update_last_triggered_step(0)
-        self._first_eval = True
-
-    def _evaluate(self, session):
-        # Patching the hook to avoid the initial evaluation before training
-        if self._first_eval:
-            self._first_eval = False
-        else:
-            return super()._evaluate(session)
-
-    def after_run(self, run_context, run_values):
-        self._first_eval = False
-        self._iter_count += 1
-        if self._timer.should_trigger_for_step(self._iter_count):
-            self._timer.update_last_triggered_step(self._iter_count)
-
-            if self._show_legend:
-                print("Evaluating iteration: {}".format(self._iter_count))
-
-            m = self._evaluate(run_context.session)
-            metrics.display(self._name, m)
-
-    def end(self, session):
-        if self._show_legend:
-            print("Evaluating final model")
-
-        self._first_eval = False
-        m = self._evaluate(session)
-        metrics.display(self._name, m)
