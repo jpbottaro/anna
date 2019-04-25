@@ -1,5 +1,6 @@
 tensorflow==1.13.1
 beautifulsoup4==4.6.0
+html5lib
 matplotlib
 numpy
 pandas
