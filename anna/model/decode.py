@@ -10,6 +10,8 @@
 @@DecoderAttRNN
 """
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+import tensorflow.keras as keras
 import tensorflow.contrib.seq2seq as s2s
 import anna.model.utils as utils
 from anna.model.bridge import DenseBridge
@@ -66,16 +68,12 @@ class DecoderBR(Decoder):
         with tf.name_scope("decoder"):
             # Add all layers of the MLP
             for i, units in enumerate(self.hidden_units):
-                net = tf.layers.dropout(net,
-                                        rate=self.dropout,
-                                        training=is_training)
-                net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
+                net = keras.layers.Dropout(rate=self.dropout)(net, training=is_training)
+                net = keras.layers.Dense(units, activation=tf.nn.relu)(net)
 
             # Compute logits (1 per class)
-            net = tf.layers.dropout(net,
-                                    rate=self.dropout,
-                                    training=is_training)
-            logits = tf.layers.dense(net, self.n_classes, activation=None)
+            net = keras.layers.Dropout(rate=self.dropout)(net, training=is_training)
+            logits = keras.layers.Dense(self.n_classes, activation=None)(net)
 
             # Compute predictions as independent confidences
             probabilities = tf.nn.sigmoid(logits)
@@ -162,9 +160,9 @@ class DecoderRNN(Decoder):
 
             target, target_len, target_max_len = self.encode_labels(labels)
 
-            output_layer = tf.layers.Dense(n_labels)
+            output_layer = keras.layers.Dense(n_labels)
             cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
-            emb = tf.get_variable("label_embeddings", [n_labels, self.emb_size])
+            emb = tf1.get_variable("label_embeddings", [n_labels, self.emb_size])
 
             # Training
             if is_training:

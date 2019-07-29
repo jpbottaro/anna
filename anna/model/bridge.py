@@ -9,6 +9,7 @@ Inspired by OpenNMT & google/seq2seq
 @@DenseBridge
 """
 import tensorflow as tf
+import tensorflow.keras as keras
 
 
 class Bridge:
@@ -50,7 +51,7 @@ class DenseBridge(Bridge):
         dims = [t.get_shape()[-1].value for t in zero_state_flat]
 
         # Project `init` to cover all needed states
-        states = tf.layers.dense(init_state, sum(dims))
+        states = keras.layers.Dense(sum(dims))(init_state)
 
         # Match dimensions of expected states
         states = tf.split(states, dims, axis=1)

@@ -1,4 +1,6 @@
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+import tensorflow.keras as keras
 
 
 def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
@@ -20,21 +22,21 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
     dropout = dropout if mode == tf.estimator.ModeKeys.TRAIN else 0.
 
     if rnn_type == "lstm":
-        cell = tf.nn.rnn_cell.LSTMCell(num_units)
+        cell = keras.layers.LSTMCell(num_units)
     elif rnn_type == "gru":
-        cell = tf.nn.rnn_cell.GRUCell(num_units)
+        cell = keras.layers.GRUCell(num_units)
     else:
         raise ValueError("Unknown rnn_type '{}'".format(rnn_type))
 
     if dropout > 0.:
         keep_prob = (1. - dropout)
-        cell = tf.nn.rnn_cell.DropoutWrapper(
+        cell = tf1.nn.rnn_cell.DropoutWrapper(
             cell=cell,
             input_keep_prob=keep_prob,
         )
 
     if residual:
-        cell = tf.nn.rnn_cell.ResidualWrapper(cell)
+        cell = tf1.nn.rnn_cell.ResidualWrapper(cell)
 
     return cell
 
@@ -113,7 +115,7 @@ def seq_roll(x, size):
 
     # Take the remainder of the division. This returns the rolled indices, e.g.
     # [2 3 0 1]
-    cols = tf.floormod(cols, steps)
+    cols = tf.math.floormod(cols, steps)
 
     # Build back the indices using the rolled targets
     indices = tf.stack([rows, cols], axis=-1)

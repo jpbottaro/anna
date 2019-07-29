@@ -2,7 +2,9 @@
 
 import os
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
 import anna.model.metrics as metrics
+import anna.data.utils as datautils
 
 
 class Trainer:
@@ -45,7 +47,7 @@ class Trainer:
             decay_rate (float): the factor to decay the learning rate
             decay_steps (int): how many steps to wait for each decay
         """
-        session_config = tf.ConfigProto()
+        session_config = tf1.ConfigProto()
         session_config.gpu_options.per_process_gpu_memory_fraction = 1
         config = tf.estimator.RunConfig(
             session_config=session_config,
@@ -67,7 +69,7 @@ class Trainer:
                 "decay_steps": decay_steps
             })
 
-    def train(self, docs, test_docs=None,
+    def train(self, docs_path, test_docs_path=None,
               val_size=500, shuffle=10000, epochs=10, eval_every=100):
         """
         Train model on `docs`, and run evaluations on `test_docs`.
@@ -77,8 +79,8 @@ class Trainer:
             - tf.Tensor: the list of labels as strings
 
         Args:
-            docs (tf.data.Dataset): the documents for training
-            test_docs (tf.data.Dataset): the documents for evaluation
+            docs_path (str): the path to the documents for training
+            test_docs_path (str): the path to the documents for evaluation
             val_size (int): size of the validation set, in nr of docs
             shuffle (int): size of the buffer use to shuffle the training set
             epochs (int): max number of epochs to run
@@ -86,15 +88,21 @@ class Trainer:
         """
 
         def train_input():
+            docs = tf.data.TFRecordDataset([docs_path])\
+                          .map(datautils.parse_example)
             return input_fn(docs.skip(val_size),
                             batch_size=self.batch_size,
                             shuffle=shuffle,
                             repeat=epochs)
 
         def val_input():
+            docs = tf.data.TFRecordDataset([docs_path])\
+                          .map(datautils.parse_example)
             return input_fn(docs.take(val_size), batch_size=self.batch_size)
 
         def test_input():
+            test_docs = tf.data.TFRecordDataset([test_docs_path])\
+                               .map(datautils.parse_example)
             return input_fn(test_docs, batch_size=self.batch_size)
 
         hooks = []
@@ -104,7 +112,7 @@ class Trainer:
                 val_input,
                 name="val",
                 every_n_iter=eval_every))
-        if test_docs:
+        if test_docs_path:
             hooks.append(tf.estimator.experimental.InMemoryEvaluatorHook(
                 self.estimator,
                 test_input,
@@ -144,9 +152,7 @@ def input_fn(docs, batch_size=64, shuffle=None, repeat=None):
                     "text": [None],
                     "text_mask": [None]
                 }, [None])
-        docs = docs.padded_batch(batch_size, padded_shapes=pads)
-
-        return docs.make_one_shot_iterator().get_next()
+        return docs.padded_batch(batch_size, padded_shapes=pads)
 
 
 def model_fn(features, labels, mode, params):
@@ -224,13 +230,13 @@ def create_optimizer(loss, learning_rate, max_norm, decay_rate, decay_steps):
     Returns:
         updater (tf.Tensor): operation that updates a single step of the network
     """
-    global_step = tf.train.get_or_create_global_step()
+    global_step = tf1.train.get_or_create_global_step()
 
     if decay_rate < 1.:
         learning_rate = tf.train.exponential_decay(
             learning_rate, global_step, decay_steps, decay_rate, staircase=True)
 
-    tf.summary.scalar("misc/learning_rate", learning_rate)
+    tf1.summary.scalar("misc/learning_rate", learning_rate)
 
     opt = tf.contrib.opt.LazyAdamOptimizer(learning_rate=learning_rate)
     grad, var = zip(*opt.compute_gradients(loss))
@@ -254,7 +260,7 @@ def clip_gradients(gradients, max_norm):
     """
     gradients, norm = tf.clip_by_global_norm(gradients, max_norm)
 
-    tf.summary.scalar("misc/grad_norm", norm)
-    tf.summary.scalar("misc/clipped_gradient", tf.global_norm(gradients))
+    tf1.summary.scalar("misc/grad_norm", norm)
+    tf1.summary.scalar("misc/clipped_gradient", tf.linalg.global_norm(gradients))
 
     return gradients

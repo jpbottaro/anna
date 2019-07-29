@@ -238,13 +238,13 @@ def parse_example(ex):
     """
     features = {}
     sequence_features = {
-        "title": tf.FixedLenSequenceFeature([], dtype=tf.string),
-        "text": tf.FixedLenSequenceFeature([], dtype=tf.string),
-        "labels": tf.FixedLenSequenceFeature([], dtype=tf.string)
+        "title": tf.io.FixedLenSequenceFeature([], dtype=tf.string),
+        "text": tf.io.FixedLenSequenceFeature([], dtype=tf.string),
+        "labels": tf.io.FixedLenSequenceFeature([], dtype=tf.string)
     }
 
     with tf.name_scope("input_processing"):
-        context, sequence = tf.parse_single_sequence_example(
+        context, sequence = tf.io.parse_single_sequence_example(
             serialized=ex,
             context_features=features,
             sequence_features=sequence_features
@@ -262,16 +262,18 @@ def parse_example(ex):
 
 def mlc_tfrecords(folder, docs_creator):
     """
-    Fetches and parses a TFRecord dataset for MLC. If the dataset doesn't
-    exist, it's created with `docs_creator` and cached in a .tfrecords
-    file.
+    Fetches and parses a TFRecord dataset for multi-label classification (MLC).
+    If the dataset doesn't exist, it's created with `docs_creator` and cached
+    in a .tfrecords file.
 
     Args:
         folder (str): absolute path to the dir where datasets are stored
         docs_creator (function): generates the full list of Docs/labels to store
 
     Returns:
-        dataset (tf.Dataset): the MLC dataset
+        train (str): the train records path
+        test (str): the test records path
+        unused (str): the unused records path
         labels (list[str]): list of labels
     """
     train_path = os.path.join(folder, TRAIN_PATH)
@@ -301,10 +303,7 @@ def mlc_tfrecords(folder, docs_creator):
 
             del docs
 
-    train = tf.data.TFRecordDataset([train_path]).map(parse_example)
-    test = tf.data.TFRecordDataset([test_path]).map(parse_example)
-    unused = tf.data.TFRecordDataset([unused_path]).map(parse_example)
     with open(labels_path, "rb") as f:
         labels = pickle.load(f)
 
-    return train, test, unused, labels
+    return train_path, test_path, unused_path, labels

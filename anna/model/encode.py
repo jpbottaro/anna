@@ -19,6 +19,7 @@ unit).
 """
 import numpy as np
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
 import anna.model.utils as utils
 import anna.data.dataset.glove as glove
 import anna.data.dataset.fasttext as fasttext
@@ -95,10 +96,10 @@ class Encoder:
             mem_fixed (tf.Tensor): fixed-sized representation of the input.
               [batch, size]
         """
-        emb = tf.get_variable("word_embeddings",
-                              self.emb.shape,
-                              initializer=tf.constant_initializer(self.emb),
-                              trainable=not self.fixed_emb)
+        emb = tf1.get_variable("word_embeddings",
+                               self.emb.shape,
+                               initializer=tf.constant_initializer(self.emb),
+                               trainable=not self.fixed_emb)
 
         with tf.name_scope("encoder"):
             # Encode all inputs
@@ -106,7 +107,7 @@ class Encoder:
             mem_len = []
             mem_fixed = []
             for name in self.input_names:
-                with tf.variable_scope("input_" + name):
+                with tf1.variable_scope("input_" + name):
                     x, x_len = get_input(features,
                                          name,
                                          self.words,
@@ -210,8 +211,8 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
         # (batch, input_limit, emb_size)
         x = x * x_mask[:, :, tf.newaxis]
 
-    tf.summary.scalar("n_words", tf.reduce_mean(x_len))
-    tf.summary.scalar("n_oov_words", tf.reduce_mean(num_oov))
+    tf1.summary.scalar("n_words", tf.reduce_mean(x_len))
+    tf1.summary.scalar("n_oov_words", tf.reduce_mean(num_oov))
 
     return x, x_len
 

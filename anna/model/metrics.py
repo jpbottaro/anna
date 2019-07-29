@@ -6,6 +6,7 @@ Metrics: Subset Accuracy, Hamming accuracy, example-based f1, and label-based
 Definitions from: https://papers.nips.cc/paper/7125-maximizing-subset-accuracy-with-recurrent-neural-networks-in-multi-label-classification.pdf"""  # noqa
 
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.eager import context
@@ -23,14 +24,14 @@ def create(labels, predictions, vocab, text_samples=False, histograms=False):
         predicted_labels_idx, predicted_labels_str = _label_hot_to_idx(
             "predicted", predictions, vocab)
 
-        n_expected_labels = tf.metrics.mean(tf.reduce_sum(labels, 1))
-        n_predicted_labels = tf.metrics.mean(tf.reduce_sum(predictions, 1))
+        n_expected_labels = tf1.metrics.mean(tf.reduce_sum(labels, 1))
+        n_predicted_labels = tf1.metrics.mean(tf.reduce_sum(predictions, 1))
 
         f_micro = f_measure(labels, predictions, num_classes)
         f_macro = f_measure(labels, predictions, num_classes, micro=False)
         f_ex = f_example(labels, predictions)
-        hamming = tf.metrics.accuracy(labels, predictions)
-        accuracy = tf.metrics.mean(
+        hamming = tf1.metrics.accuracy(labels, predictions)
+        accuracy = tf1.metrics.mean(
             tf.reduce_all(tf.equal(labels, predictions), 1))
 
     metrics = {
@@ -44,7 +45,7 @@ def create(labels, predictions, vocab, text_samples=False, histograms=False):
     }
 
     for name, value in metrics.items():
-        tf.summary.scalar(name, value[1])
+        tf1.summary.scalar(name, value[1])
 
     if text_samples:
         tf.summary.text("out/expected_labels_examples", expected_labels_str)
@@ -117,7 +118,7 @@ def f_measure(labels,
       RuntimeError: If eager execution is enabled.
     """
     if context.executing_eagerly():
-        raise RuntimeError('tf.metrics.f_measure is not '
+        raise RuntimeError('f_measure is not '
                            'supported when eager execution is enabled.')
 
     with variable_scope.variable_scope(name, 'f_measure',
@@ -156,7 +157,7 @@ def f_measure(labels,
             value = 2 * tp
             den = 2 * tp + fp + fn
             res = array_ops.where(math_ops.greater(den, 0),
-                                  math_ops.div(value, den),
+                                  math_ops.divide(value, den),
                                   array_ops.ones_like(value))
             return math_ops.reduce_mean(res, name=name)
 
@@ -174,7 +175,8 @@ def f_example(labels,
     """Computes the example-based f1 score of the predictions with respect to
     the labels.
 
-    The `f_measure` uses the `tf.metrics.mean` to store the streaming counts.
+    The `f_measure` uses the `tf.compat.v1.metrics.mean` to store the streaming
+    counts.
 
     For estimation of the metric over a stream of data, the function creates an
     `update_op` that updates these variables and returns the `f_measure`.
@@ -203,7 +205,7 @@ def f_example(labels,
       RuntimeError: If eager execution is enabled.
     """
     if context.executing_eagerly():
-        raise RuntimeError('tf.metrics.f_measure is not '
+        raise RuntimeError('f_example is not '
                            'supported when eager execution is enabled.')
 
     # Calculate the double of the true positives
@@ -216,19 +218,19 @@ def f_example(labels,
 
     # Avoid division by zero
     res = array_ops.where(math_ops.greater(den, 0),
-                          math_ops.div(value, den),
+                          math_ops.divide(value, den),
                           array_ops.ones_like(value), name)
 
-    return tf.metrics.mean(res,
-                           metrics_collections=metrics_collections,
-                           updates_collections=updates_collections,
-                           name=name)
+    return tf1.metrics.mean(res,
+                            metrics_collections=metrics_collections,
+                            updates_collections=updates_collections,
+                            name=name)
 
 
 def metric_variable(shape, dtype, validate_shape=True, name=None):
     """Create variable in `GraphKeys.(LOCAL|METRIC_VARIABLES`) collections.
 
-    Taken from tf.metrics directly, as the function is not exposed."""
+    Taken from tf.compat.v1.metrics directly, as the function is not exposed."""
 
     return variable_scope.variable(
         lambda: array_ops.zeros(shape, dtype),
