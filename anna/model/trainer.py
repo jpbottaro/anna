@@ -48,10 +48,10 @@ class Trainer:
             decay_steps (int): how many steps to wait for each decay
         """
         session_config = tf1.ConfigProto()
-        session_config.gpu_options.per_process_gpu_memory_fraction = 1
+        session_config.gpu_options.allow_growth = True
         config = tf.estimator.RunConfig(
             session_config=session_config,
-            keep_checkpoint_max=1
+            keep_checkpoint_max=0
         )
         model_dir = os.path.join(data_dir, folder_name, name)
         self.batch_size = batch_size
