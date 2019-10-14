@@ -2,7 +2,7 @@
 
 import os
 import tensorflow as tf
-import tensorflow.compat.v1 as tf1
+import tensorflow_addons as tfa
 import anna.model.metrics as metrics
 import anna.data.utils as datautils
 
@@ -27,8 +27,6 @@ class Trainer:
                  batch_size=64,
                  learning_rate=0.001,
                  grad_clip=0.,
-                 decay_rate=1.,
-                 decay_steps=0,
                  *args,
                  **kwargs):
         """
@@ -44,29 +42,19 @@ class Trainer:
             batch_size (int): batch size for training
             learning_rate (float): training learning rate
             grad_clip (float): maximum norm for gradients when optimizing
-            decay_rate (float): the factor to decay the learning rate
-            decay_steps (int): how many steps to wait for each decay
         """
-        session_config = tf1.ConfigProto()
-        session_config.gpu_options.allow_growth = True
-        config = tf.estimator.RunConfig(
-            session_config=session_config,
-            keep_checkpoint_max=0
-        )
         model_dir = os.path.join(data_dir, folder_name, name)
         self.batch_size = batch_size
         self.estimator = tf.estimator.Estimator(
             model_fn=model_fn,
             model_dir=model_dir,
-            config=config,
+            config=tf.estimator.RunConfig(keep_checkpoint_max=0),
             params={
                 "encoder": encoder,
                 "decoder": decoder,
                 "label_vocab": labels,
                 "learning_rate": learning_rate,
-                "grad_clip": grad_clip,
-                "decay_rate": decay_rate,
-                "decay_steps": decay_steps
+                "grad_clip": grad_clip
             })
 
     def train(self, docs_path, test_docs_path=None,
@@ -90,7 +78,8 @@ class Trainer:
         def train_input():
             docs = tf.data.TFRecordDataset([docs_path])\
                           .map(datautils.parse_example)
-            return input_fn(docs.skip(val_size),
+            return input_fn("train_input",
+                            docs.skip(val_size),
                             batch_size=self.batch_size,
                             shuffle=shuffle,
                             repeat=epochs)
@@ -98,12 +87,16 @@ class Trainer:
         def val_input():
             docs = tf.data.TFRecordDataset([docs_path])\
                           .map(datautils.parse_example)
-            return input_fn(docs.take(val_size), batch_size=self.batch_size)
+            return input_fn("val_input",
+                            docs.take(val_size),
+                            batch_size=self.batch_size)
 
         def test_input():
             test_docs = tf.data.TFRecordDataset([test_docs_path])\
                                .map(datautils.parse_example)
-            return input_fn(test_docs, batch_size=self.batch_size)
+            return input_fn("test_input",
+                            test_docs,
+                            batch_size=self.batch_size)
 
         hooks = []
         if val_size:
@@ -122,12 +115,12 @@ class Trainer:
         self.estimator.train(input_fn=train_input, hooks=hooks)
 
 
-def input_fn(docs, batch_size=64, shuffle=None, repeat=None):
-    with tf.name_scope("input_processing"):
+def input_fn(name, docs, batch_size=64, shuffle=None, repeat=None):
+    with tf.name_scope(name):
         def pad_empty(doc, labels):
-            doc = {k: tf.cond(tf.equal(tf.shape(v)[0], 0),
-                              lambda: tf.constant([""]),
-                              lambda: v)
+            doc = {k: tf.cond(pred=tf.equal(tf.shape(input=v)[0], 0),
+                              true_fn=lambda: tf.constant([""]),
+                              false_fn=lambda: v)
                    for k, v in doc.items()}
             return doc, labels
 
@@ -161,8 +154,6 @@ def model_fn(features, labels, mode, params):
     label_vocab = params["label_vocab"]
     lr = params["learning_rate"]
     clipping = params["grad_clip"]
-    decay_rate = params["decay_rate"]
-    decay_steps = params["decay_steps"]
 
     with tf.name_scope("expected_output"):
         if labels is not None:
@@ -178,7 +169,9 @@ def model_fn(features, labels, mode, params):
 
     train_op = None
     if mode == tf.estimator.ModeKeys.TRAIN:
-        train_op = create_optimizer(loss, lr, clipping, decay_rate, decay_steps)
+        opt = tfa.optimizers.LazyAdam(learning_rate=lr, clipnorm=clipping)
+        train_vars = encoder.trainable_variables + decoder.trainable_variables
+        train_op = opt.minimize(lambda: loss, train_vars)
 
     pred = {"predictions": predictions}
     return tf.estimator.EstimatorSpec(mode,
@@ -190,22 +183,25 @@ def model_fn(features, labels, mode, params):
 
 def label_idx_to_hot(labels, vocab):
     """
-    Coverts the labels from a list of ids to a multi-hot vector.
+    Coverts the labels from a list of strings to a multi-hot vector.
 
     Args:
-        labels (tf.Tensor): expected labels as a list of ids.
+        labels (tf.Tensor): expected labels as a list of strings.
           [batch, nr_positive_labels]
         vocab (list[str]): vocabulary of labels
 
     Returns:
-        labels (tf.Tensor): expected labels as a list of ids.
+        labels (tf.Tensor): expected labels as multi-hot tensor
           [batch, nr_labels]
     """
     # Convert strings to ids (pads become -1)
     # (batch, n_positive_labels)
-    labels = tf.contrib.lookup.index_table_from_tensor(
-        mapping=vocab,
-        default_value=-1).lookup(labels)
+    init = tf.lookup.KeyValueTensorInitializer(
+            vocab,
+            list(range(len(vocab))),
+            key_dtype=tf.string,
+            value_dtype=tf.int64)
+    labels = tf.lookup.StaticHashTable(init, -1).lookup(labels)
 
     # Turn indexes to one-hot vectors (pads become all 0)
     # (batch, n_positive_labels, n_classes)
@@ -213,54 +209,4 @@ def label_idx_to_hot(labels, vocab):
 
     # Turn labels into fixed-sized 1/0 vector
     # (batch, n_classes)
-    return tf.reduce_sum(labels, 1)
-
-
-def create_optimizer(loss, learning_rate, max_norm, decay_rate, decay_steps):
-    """
-    Creates an optimizing operation for the given loss function.
-
-    Args:
-        loss (tf.Tensor): a loss function to optimize against
-        learning_rate (float): the learning rate for the optimizer
-        max_norm (float): maximum norm for any gradient when doing the update
-        decay_rate (float): the factor to decay the learning rate
-        decay_steps (int): how many steps to wait for each decay
-
-    Returns:
-        updater (tf.Tensor): operation that updates a single step of the network
-    """
-    global_step = tf1.train.get_or_create_global_step()
-
-    if decay_rate < 1.:
-        learning_rate = tf.train.exponential_decay(
-            learning_rate, global_step, decay_steps, decay_rate, staircase=True)
-
-    tf1.summary.scalar("misc/learning_rate", learning_rate)
-
-    opt = tf.contrib.opt.LazyAdamOptimizer(learning_rate=learning_rate)
-    grad, var = zip(*opt.compute_gradients(loss))
-
-    if max_norm > 0.:
-        grad = clip_gradients(grad, max_norm)
-
-    return opt.apply_gradients(zip(grad, var), global_step=global_step)
-
-
-def clip_gradients(gradients, max_norm):
-    """
-    Clips gradients to the maximum `max_norm`.
-
-    Args:
-        gradients: the gradients to be applied when optimizing
-        max_norm: the maximum norm for each gradient
-
-    Returns:
-        gradients: the gradients to be applied when optimizing
-    """
-    gradients, norm = tf.clip_by_global_norm(gradients, max_norm)
-
-    tf1.summary.scalar("misc/grad_norm", norm)
-    tf1.summary.scalar("misc/clipped_gradient", tf.linalg.global_norm(gradients))
-
-    return gradients
+    return tf.reduce_sum(input_tensor=labels, axis=1)

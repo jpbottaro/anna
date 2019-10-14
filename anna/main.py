@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tensorflow as tf
 import anna.model.premade as models
 import anna.data.dataset.reuters21578 as reuters
 import anna.data.dataset.fullrcv1 as rcv1
@@ -46,6 +47,10 @@ if __name__ == "__main__":
 
     # Fetch and preprocess dataset
     train_docs, test_docs, unused_docs, labels = data.fetch_and_parse(data_dir)
+
+    # Only consume GPU memory as needed
+    for device in tf.config.experimental.list_physical_devices('GPU'):
+        tf.config.experimental.set_memory_growth(device, True)
 
     for builder in models.BEST:
         # Create default trainer

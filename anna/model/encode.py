@@ -19,13 +19,13 @@ unit).
 """
 import numpy as np
 import tensorflow as tf
-import tensorflow.compat.v1 as tf1
+import tensorflow.keras as tfk
 import anna.model.utils as utils
 import anna.data.dataset.glove as glove
 import anna.data.dataset.fasttext as fasttext
 
 
-class Encoder:
+class Encoder(tf.Module):
     """
     Encoder that takes the input features, and produces a
     vector representation of them.
@@ -33,6 +33,7 @@ class Encoder:
 
     def __init__(self,
                  data_dir,
+                 name="encoder",
                  input_names=None,
                  input_limit=None,
                  voc_size=100000,
@@ -55,6 +56,8 @@ class Encoder:
             pretrained_embeddings (str): which pretrained embeddings to use.
               options are "glove", "fasttext" (default "glove")
         """
+        super(Encoder, self).__init__(name=name)
+
         if not input_names:
             input_names = ["title", "text"]
 
@@ -96,10 +99,11 @@ class Encoder:
             mem_fixed (tf.Tensor): fixed-sized representation of the input.
               [batch, size]
         """
-        emb = tf1.get_variable("word_embeddings",
-                               self.emb.shape,
-                               initializer=tf.constant_initializer(self.emb),
-                               trainable=not self.fixed_emb)
+        emb = tf.Variable(name="word_embeddings",
+                          shape=self.emb.shape,
+                          initial_value=self.emb,
+                          trainable=not self.fixed_emb,
+                          dtype=tf.float32)
 
         with tf.name_scope("encoder"):
             # Encode all inputs
@@ -107,7 +111,7 @@ class Encoder:
             mem_len = []
             mem_fixed = []
             for name in self.input_names:
-                with tf1.variable_scope("input_" + name):
+                with tf.name_scope("input_" + name):
                     x, x_len = get_input(features,
                                          name,
                                          self.words,
@@ -165,7 +169,7 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
         features (dict): dictionary of input features
         name (str): name of the feature to encode
         words (list[str]): list of strings as vocabulary
-        emb (tf.Tensor): initialization for the word embeddings
+        emb (tf.Variable): initialization for the word embeddings
         input_limit (int): maximum size to use from the input sequence
         oov_size (int): nr of buckets to use for out-of-vocabulary words
 
@@ -186,33 +190,39 @@ def get_input(features, name, words, emb, input_limit=None, oov_size=0):
     # Length of each sequence
     # (batch)
     with tf.name_scope("length"):
-        x_len = tf.reduce_sum(x_mask, 1)
+        x_len = tf.reduce_sum(input_tensor=x_mask, axis=1)
         x_len = tf.cast(x_len, tf.int32)
 
     with tf.name_scope("embed"):
         # Convert strings to ids
         # (batch, input_limit)
-        x = tf.contrib.lookup.index_table_from_tensor(
-            mapping=words,
-            default_value=1,
-            num_oov_buckets=oov_size).lookup(x)
+        init = tf.lookup.KeyValueTensorInitializer(
+                words,
+                list(range(len(words))),
+                key_dtype=tf.string,
+                value_dtype=tf.int64)
+        if oov_size > 0:
+            lookup_table = tf.lookup.StaticVocabularyTable(init, oov_size)
+        else:
+            lookup_table = tf.lookup.StaticHashTable(init, 1)
+        x = lookup_table.lookup(x)
 
         # Count how many out-of-vocabulary (OOV) words are in the input
         num_oov = tf.cast(x, tf.float32) * x_mask
         num_oov = tf.logical_or(tf.equal(num_oov, 1),
                                 tf.greater_equal(num_oov, len(words)))
-        num_oov = tf.reduce_sum(tf.cast(num_oov, tf.float32), axis=1)
+        num_oov = tf.reduce_sum(input_tensor=tf.cast(num_oov, tf.float32), axis=1)
 
         # Replace with embeddings
         # (batch, input_limit, emb_size)
-        x = tf.nn.embedding_lookup(emb, x)
+        x = tf.nn.embedding_lookup(params=emb, ids=x)
 
         # Clear embeddings for pads
         # (batch, input_limit, emb_size)
         x = x * x_mask[:, :, tf.newaxis]
 
-    tf1.summary.scalar("n_words", tf.reduce_mean(x_len))
-    tf1.summary.scalar("n_oov_words", tf.reduce_mean(num_oov))
+    tf.summary.scalar("n_words", tf.reduce_mean(input_tensor=x_len))
+    tf.summary.scalar("n_oov_words", tf.reduce_mean(input_tensor=num_oov))
 
     return x, x_len
 
@@ -226,7 +236,7 @@ class EncoderAvg(Encoder):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
         div = tf.cast(x_len[:, tf.newaxis], tf.float32)
-        result = tf.reduce_sum(x, 1) / tf.maximum(div, tf.ones_like(div))
+        result = tf.reduce_sum(input_tensor=x, axis=1) / tf.maximum(div, tf.ones_like(div))
         return x, x_len, result
 
 
@@ -238,7 +248,7 @@ class EncoderMax(Encoder):
     def encode(self, x, x_len, mode, name):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
-        return x, x_len, tf.reduce_max(x, 1)
+        return x, x_len, tf.reduce_max(input_tensor=x, axis=1)
 
 
 class EncoderCNN(Encoder):
@@ -251,17 +261,16 @@ class EncoderCNN(Encoder):
         for size in [2, 3, 4]:
             # Run CNN over words
             # (batch, input_len, filters)
-            pool = tf.layers.conv1d(
+            pool = tfk.layers.Conv1D(
                 name="{}_conv_{}".format(name, size),
-                inputs=x,
                 filters=256,
                 kernel_size=size,
                 padding="same",
-                activation=tf.nn.relu)
+                activation=tf.nn.relu)(x)
 
             # Max over-time pooling
             # (batch, filters)
-            pool = tf.reduce_max(pool, 1)
+            pool = tfk.layers.GlobalMaxPool1D(pool)
 
             pools.append(pool)
 
@@ -307,17 +316,19 @@ class EncoderUniRNN(EncoderRNN):
                               self.dropout)
 
         # Runs encoding RNN
-        # out: (batch_size, size, hidden_size)
-        # states: (2 or 0, batch_size, hidden_size)
-        outputs, state = tf.nn.dynamic_rnn(cell,
-                                           x,
-                                           sequence_length=x_len,
-                                           swap_memory=True,
-                                           dtype=tf.float32)
+        # result: [(batch_size, size, hidden_size), state1, state2, ...]
+        # state: (batch_size, hidden_size)
+        result = tfk.layers.RNN(cell,
+                                return_sequences=True,
+                                return_state=True)(x, tf.sequence_mask(x_len))
+
+        # outputs: (batch_size, size, hidden_size)
+        # states: [(batch_size, hidden_size)]
+        outputs, states = result[0], result[1:]
 
         # Get the right part of the state (useful for tuple states like in LSTM)
-        # (batch_size, 2 * hidden_size)
-        state = utils.rnn_state_trim(self.rnn_type, state)
+        # (batch_size, hidden_size)
+        state = utils.rnn_state_trim(self.rnn_type, states)
 
         return outputs, x_len, state
 
@@ -328,33 +339,21 @@ class EncoderBiRNN(EncoderRNN):
     """
 
     def encode(self, x, x_len, mode, name):
-        c_fw = utils.rnn_cell(self.rnn_type,
-                              self.hidden_size // 2,
-                              mode,
-                              self.dropout)
-        c_bw = utils.rnn_cell(self.rnn_type,
+        cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size // 2,
                               mode,
                               self.dropout)
 
-        # Runs encoding RNN
-        # out: 2 x (batch_size, size, hidden_size)
-        # states: 2 x (2 or 0, batch_size, hidden_size)
-        outputs, states = tf.nn.bidirectional_dynamic_rnn(c_fw,
-                                                          c_bw,
-                                                          x,
-                                                          sequence_length=x_len,
-                                                          swap_memory=True,
-                                                          dtype=tf.float32)
+        # Runs encoding Bidirectional RNN
+        # result: [(batch_size, size, hidden_size), state1, state2, ...]
+        # state: (batch_size, hidden_size)
+        rnn = tfk.layers.RNN(cell,
+                             return_sequences=True,
+                             return_state=True)
+        result = tfk.layers.Bidirectional(rnn, merge_mode="concat")(x, tf.sequence_mask(x_len))
 
-        # Concatenates outputs
-        # out: (batch_size, size, 2 * hidden_size)
-        # states: (batch_size, 2 * hidden_size)
-        outputs = tf.concat(outputs, axis=-1)
-        states = tf.concat(states, axis=-1)
+        # outputs: (batch_size, size, hidden_size)
+        # states: [(batch_size, hidden_size)]
+        outputs, states = result[0], result[1:]
 
-        # Get the right part of the state (useful for tuple states like in LSTM)
-        # (batch_size, 2 * hidden_size)
-        state = utils.rnn_state_trim(self.rnn_type, states)
-
-        return outputs, x_len, state
+        return outputs, x_len, tf.concat(states, axis=-1)

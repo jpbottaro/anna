@@ -10,18 +10,26 @@
 @@DecoderAttRNN
 """
 import tensorflow as tf
-import tensorflow.compat.v1 as tf1
 import tensorflow.keras as keras
-import tensorflow.contrib.seq2seq as s2s
+import tensorflow_addons.seq2seq as s2s
 import anna.model.utils as utils
 from anna.model.bridge import DenseBridge
 
 
-class Decoder:
+class Decoder(tf.Module):
     """
     Takes the output of an `Encoder`, and produces the final list
     of predictions.
     """
+
+    def __init__(self, name="decoder"):
+        """
+        Creates an decoder with the given name.
+
+        Args:
+            name (str): name of the decoder
+        """
+        super(Decoder, self).__init__(name=name)
 
     def __call__(self, mem, mem_len, mem_fixed, labels, mode):
         """
@@ -55,6 +63,7 @@ class DecoderBR(Decoder):
             hidden_units (list[int]): size of each layer of the FFNN
             dropout (float): dropout rate for each layer
         """
+        super(DecoderBR, self).__init__()
         _ = data_dir
 
         self.n_classes = n_classes
@@ -92,7 +101,7 @@ class DecoderBR(Decoder):
 
                 # Average loss for all batches/classes
                 # scalar
-                loss = tf.reduce_mean(loss)
+                loss = tf.reduce_mean(input_tensor=loss)
 
         return predictions, loss
 
@@ -128,10 +137,11 @@ class DecoderRNN(Decoder):
             bridge (Bridge): how to hook the input to the RNN state.
             dropout (float): rate of dropout to apply (0 to disable).
             beam_width (int): size of the beam search beam (0 to disable).
-            attention (tf.contrib.seq2seq.AttentionMechanism): the attention
+            attention (tfa.seq2seq.AttentionMechanism): the attention
               mechanism to use (e.g. LuongAttention)
             loss (func): function that returns the loss for the model.
         """
+        super(DecoderRNN, self).__init__()
         _ = data_dir
 
         self.hidden_size = hidden_size
@@ -154,15 +164,17 @@ class DecoderRNN(Decoder):
         is_training = mode == tf.estimator.ModeKeys.TRAIN
         is_eval = mode == tf.estimator.ModeKeys.EVAL
 
-        with tf.variable_scope("decoder") as scope:
+        with tf.name_scope("decoder") as scope:
             n_labels = len(self.voc)
-            batch_size = tf.shape(labels)[0]
+            batch_size = tf.shape(input=labels)[0]
 
             target, target_len, target_max_len = self.encode_labels(labels)
 
             output_layer = keras.layers.Dense(n_labels)
             cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
-            emb = tf1.get_variable("label_embeddings", [n_labels, self.emb_size])
+            emb = tf.Variable(name="label_embeddings",
+                              shape=[n_labels, self.emb_size],
+                              initial_value=tf.initializers.glorot_uniform)
 
             # Training
             if is_training:
@@ -172,7 +184,7 @@ class DecoderRNN(Decoder):
                 inputs = tf.concat([start_tokens, target[:, :-1]], axis=1)
 
                 # [batch, steps, emb_size]
-                inputs = tf.nn.embedding_lookup(emb, inputs)
+                inputs = tf.nn.embedding_lookup(params=emb, ids=inputs)
 
                 helper = s2s.TrainingHelper(inputs, target_len)
 
@@ -244,7 +256,7 @@ class DecoderRNN(Decoder):
                 loss = self.loss(labels=target, logits=logits)
 
                 # scalar
-                loss = tf.reduce_sum(loss * mask)
+                loss = tf.reduce_sum(input_tensor=loss * mask)
 
                 # normalize by batch size
                 loss /= tf.cast(batch_size, tf.float32)
@@ -281,20 +293,20 @@ class DecoderRNN(Decoder):
 
         # Length of each list of labels
         # (batch)
-        seq_len = tf.reduce_sum(mask, axis=1)
+        seq_len = tf.reduce_sum(input_tensor=mask, axis=1)
 
         # Limit size of target to longest sequence
         # (batch, max_steps)
-        max_len = tf.reduce_max(seq_len)
+        max_len = tf.reduce_max(input_tensor=seq_len)
         indices = indices[:, :max_len]
 
         # Add extra column for EOS label
         # (batch, max_steps)
-        indices = tf.pad(indices, [[0, 0], [0, 1]])
+        indices = tf.pad(tensor=indices, paddings=[[0, 0], [0, 1]])
 
         # Add EOS label
         # (batch, max_steps)
-        batch_size = tf.shape(labels)[0]
+        batch_size = tf.shape(input=labels)[0]
         cols = tf.range(batch_size)
         eos_indices = tf.stack([cols, seq_len], axis=1)
         eos = tf.scatter_nd(indices=eos_indices,
@@ -318,8 +330,8 @@ class DecoderRNN(Decoder):
         """
         # Take highest scoring labels per step
         # (batch_size, n_steps)
-        predictions = tf.argmax(logits, 2)
-        max_len = tf.shape(predictions)[1]
+        predictions = tf.argmax(input=logits, axis=2)
+        max_len = tf.shape(input=predictions)[1]
 
         # Build mask until the first EOS label
         # (batch_size, n_steps)
@@ -329,11 +341,11 @@ class DecoderRNN(Decoder):
 
         # argmax will keep the first hit
         # (batch_size)
-        mask = tf.argmax(mask, 1)
+        eos_idx = tf.argmax(input=mask, axis=1)
 
         # Only allow predictions until first EOS
         # (batch_size, n_steps)
-        mask = tf.sequence_mask(mask,
+        mask = tf.sequence_mask(eos_idx,
                                 max_len,
                                 dtype=tf.int64)
 
@@ -346,13 +358,11 @@ class DecoderRNN(Decoder):
 
         # Add all one-hot to build multi-hot vector
         # (batch_size, n_labels + n_special)
-        predictions = tf.reduce_sum(predictions, 1)
+        predictions = tf.reduce_sum(input_tensor=predictions, axis=1)
 
         # If labels were predicted multiple times, just make it a 1
         # (batch_size, n_labels + n_special)
-        predictions = tf.where(tf.greater(predictions, 0),
-                               tf.ones_like(predictions),
-                               tf.zeros_like(predictions))
+        predictions = tf.minimum(predictions, 1.)
 
         # Remove special labels from the predictions
         # (batch_size, n_labels)
@@ -381,7 +391,7 @@ class DecoderRNN(Decoder):
                               self.dropout)
 
         # Build initial state based on `mem_fixed`
-        batch_size = tf.shape(mem_fixed)[0]
+        batch_size = tf.shape(input=mem_fixed)[0]
         zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
 
@@ -402,7 +412,7 @@ class DecoderRNN(Decoder):
                 name="attention")
 
             if is_training and self.dropout > 0.:
-                cell = tf.nn.rnn_cell.DropoutWrapper(
+                cell = tf.nn.RNNCellDropoutWrapper(
                     cell=cell,
                     output_keep_prob=1. - self.dropout
                 )

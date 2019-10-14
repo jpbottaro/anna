@@ -1,3 +1,4 @@
+import tensorflow_addons as tfa
 from anna.model.trainer import Trainer
 from anna.model.encode import *
 from anna.model.decode import *
@@ -152,7 +153,7 @@ class EncDec(Trainer):
                          labels,
                          EncoderBiRNN(data_dir, input_limit=input_limit),
                          DecoderRNN(data_dir, labels,
-                                    attention=tf.contrib.seq2seq.LuongAttention,
+                                    attention=tfa.seq2seq.LuongAttention,
                                     beam_width=beam_width),
                          name=name,
                          learning_rate=0.0002,

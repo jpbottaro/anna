@@ -16,23 +16,21 @@ from tensorflow.python.ops import state_ops
 from tensorflow.python.ops import variable_scope
 
 
-def create(labels, predictions, vocab, text_samples=False, histograms=False):
+def create(labels, predictions, vocab, histograms=False):
     num_classes = len(vocab)
     with tf.name_scope("metrics"):
-        expected_labels_idx, expected_labels_str = _label_hot_to_idx(
-            "expected", labels, vocab)
-        predicted_labels_idx, predicted_labels_str = _label_hot_to_idx(
-            "predicted", predictions, vocab)
+        expected_labels_idx = _label_hot_to_idx("expected", labels, vocab)
+        predicted_labels_idx = _label_hot_to_idx("predicted", predictions, vocab)
 
-        n_expected_labels = tf1.metrics.mean(tf.reduce_sum(labels, 1))
-        n_predicted_labels = tf1.metrics.mean(tf.reduce_sum(predictions, 1))
+        n_expected_labels = tf1.metrics.mean(tf.reduce_sum(input_tensor=labels, axis=1))
+        n_predicted_labels = tf1.metrics.mean(tf.reduce_sum(input_tensor=predictions, axis=1))
 
         f_micro = f_measure(labels, predictions, num_classes)
         f_macro = f_measure(labels, predictions, num_classes, micro=False)
         f_ex = f_example(labels, predictions)
         hamming = tf1.metrics.accuracy(labels, predictions)
         accuracy = tf1.metrics.mean(
-            tf.reduce_all(tf.equal(labels, predictions), 1))
+            tf.reduce_all(input_tensor=tf.equal(labels, predictions), axis=1))
 
     metrics = {
         "out/n_expected_labels": n_expected_labels,
@@ -47,13 +45,9 @@ def create(labels, predictions, vocab, text_samples=False, histograms=False):
     for name, value in metrics.items():
         tf1.summary.scalar(name, value[1])
 
-    if text_samples:
-        tf.summary.text("out/expected_labels_examples", expected_labels_str)
-        tf.summary.text("out/predicted_labels_examples", predicted_labels_str)
-
     if histograms:
-        tf.summary.histogram("out/expected_labels_dist", expected_labels_idx)
-        tf.summary.histogram("out/predicted_labels_dist", predicted_labels_idx)
+        tf1.summary.histogram("out/expected_labels_dist", expected_labels_idx)
+        tf1.summary.histogram("out/predicted_labels_dist", predicted_labels_idx)
 
     return metrics
 
@@ -71,14 +65,7 @@ def _label_hot_to_idx(name, labels, vocab):
     idx = tf.cast(tf.where(tf.equal(labels, 1.)), tf.int64)
     idx = idx[:, 1]
 
-    # Fetch string labels for the first document
-    first_idx = tf.cast(tf.where(tf.equal(labels[0], 1.)), tf.int64)
-    names = tf.contrib.lookup.index_to_string_table_from_tensor(
-        vocab,
-        default_value="_UNK_",
-        name="{}_output".format(name)).lookup(first_idx)
-
-    return idx, names
+    return idx
 
 
 def f_measure(labels,

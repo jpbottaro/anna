@@ -1,5 +1,4 @@
 import tensorflow as tf
-import tensorflow.compat.v1 as tf1
 import tensorflow.keras as keras
 
 
@@ -30,13 +29,13 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
 
     if dropout > 0.:
         keep_prob = (1. - dropout)
-        cell = tf1.nn.rnn_cell.DropoutWrapper(
+        cell = tf.nn.RNNCellDropoutWrapper(
             cell=cell,
             input_keep_prob=keep_prob,
         )
 
     if residual:
-        cell = tf1.nn.rnn_cell.ResidualWrapper(cell)
+        cell = tf.nn.RNNCellResidualWrapper(cell)
 
     return cell
 
@@ -77,8 +76,8 @@ def seq_pad(x, size):
         x (tf.Tensor): the padded tensor
           [batch, size, emb_size]
     """
-    emb_size = x.get_shape()[-1].value
-    x = tf.pad(x, [[0, 0], [0, size], [0, 0]])
+    emb_size = x.get_shape()[-1]
+    x = tf.pad(tensor=x, paddings=[[0, 0], [0, size], [0, 0]])
     x = x[:, :size, :]
     x.set_shape([None, None, emb_size])
 
@@ -101,8 +100,8 @@ def seq_roll(x, size):
         y (tf.Tensor): the rolled tensor
           [batch, steps, emb_size]
     """
-    batch_size = tf.shape(x)[0]
-    steps = tf.shape(x)[1]
+    batch_size = tf.shape(input=x)[0]
+    steps = tf.shape(input=x)[1]
 
     # Build grid with all indices in the tensor `x`
     # x = [1 3 3 7]
@@ -150,7 +149,7 @@ def seq_concat(memory, memory_len):
     final_len = tf.add_n(memory_len)
 
     # Calculate largest instance
-    max_len = tf.reduce_max(final_len)
+    max_len = tf.reduce_max(input_tensor=final_len)
 
     # Pad memory to the largest combined sequence
     # list([batch, max_len, emb_size])

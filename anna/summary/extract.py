@@ -17,7 +17,7 @@ def get_metrics(events_paths):
     """
     result = defaultdict(list)
     for p in events_paths:
-        for e in tf.train.summary_iterator(p):
+        for e in tf.compat.v1.train.summary_iterator(p):
             for v in e.summary.value:
                 result[v.tag].append((e.step, v.simple_value))
 

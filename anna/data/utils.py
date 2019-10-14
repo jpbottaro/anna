@@ -292,7 +292,7 @@ def mlc_tfrecords(folder, docs_creator):
         for path, docs in [(train_path, train),
                            (test_path, test),
                            (unused_path, unused)]:
-            with tf.python_io.TFRecordWriter(path) as writer:
+            with tf.io.TFRecordWriter(path) as writer:
                 for doc in docs:
                     title = tokenize(doc.title)
                     text = tokenize(doc.text)

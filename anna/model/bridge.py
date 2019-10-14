@@ -45,7 +45,7 @@ class ZeroBridge(Bridge):
 class DenseBridge(Bridge):
     def __call__(self, zero_state, init_state):
         # See states as a flat list of tensors
-        zero_state_flat = tf.contrib.framework.nest.flatten(zero_state)
+        zero_state_flat = tf.nest.flatten(zero_state)
 
         # Find sizes of all states
         dims = [t.get_shape()[-1].value for t in zero_state_flat]
@@ -57,4 +57,4 @@ class DenseBridge(Bridge):
         states = tf.split(states, dims, axis=1)
 
         # Pack the result to conform with the requested states
-        return tf.contrib.framework.nest.pack_sequence_as(zero_state, states)
+        return tf.nest.pack_sequence_as(zero_state, states)
