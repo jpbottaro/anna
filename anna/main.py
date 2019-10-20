@@ -62,8 +62,7 @@ if __name__ == "__main__":
                     test_docs,
                     val_size=val_size,
                     epochs=epochs,
-                    shuffle=shuffle,
-                    eval_every=eval_every)
+                    shuffle=shuffle)
 
         # Delete to save memory
         del model

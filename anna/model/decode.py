@@ -10,13 +10,13 @@
 @@DecoderAttRNN
 """
 import tensorflow as tf
-import tensorflow.keras as keras
+import tensorflow.keras as tfk
 import tensorflow_addons.seq2seq as s2s
 import anna.model.utils as utils
 from anna.model.bridge import DenseBridge
 
 
-class Decoder(tf.Module):
+class Decoder(tfk.layers.Layer):
     """
     Takes the output of an `Encoder`, and produces the final list
     of predictions.
@@ -31,10 +31,47 @@ class Decoder(tf.Module):
         """
         super(Decoder, self).__init__(name=name)
 
-    def __call__(self, mem, mem_len, mem_fixed, labels, mode):
+    def get_config(self):
+        """
+        Gets the configuration of the decoder
+
+        Returns:
+            config (dict[str, str]): configuration of the decoder
+        """
+        return {
+            'type': str(type(self))
+        }
+
+    def call(self, inputs, training=None):
         """
         Takes `net` as input and predicts the classes. Uses `labels` to
         generate a loss function to optimize the network.
+
+        Args:
+            inputs (list[tf.Tensor]): a list of tensors, expecting:
+                - mem (tf.Tensor): sequential representation of the input.
+                  [batch, sum(len), size]
+                - mem_len (tf.Tensor): length of `mem`.
+                  [batch]
+                - mem_fixed (tf.Tensor): fixed-sized representation of the input.
+                  [batch, size]
+                - labels (tf.Tensor): the expected label output, as a 1/0 vector.
+                  [batch, n_labels]
+            training (bool): if this is training or eval
+
+        Returns:
+            predictions (tf.Tensor): multi-hot tensor of predictions
+            loss (tf.Tensor): loss function for the network
+        """
+        mem, mem_len, mem_fixed, labels = inputs
+        with tf.name_scope("decoder"):
+            predictions, loss = self.decode(mem, mem_len, mem_fixed, labels, training)
+            self.add_loss(loss)
+            return predictions
+
+    def decode(self, mem, mem_len, mem_fixed, labels, training):
+        """
+        Takes `net` as input and predicts the classes.
 
         Args:
             mem (tf.Tensor): sequential representation of the input.
@@ -45,7 +82,11 @@ class Decoder(tf.Module):
               [batch, size]
             labels (tf.Tensor): the expected label output, as a 1/0 vector.
               [batch, n_labels]
-            mode (tf.estimator.ModeKeys): the mode we are on
+            training (bool): if this is training or eval
+
+        Returns:
+            predictions (tf.Tensor): multi-hot tensor of predictions
+            loss (tf.Tensor): loss function for the network
         """
         raise NotImplementedError
 
@@ -66,33 +107,26 @@ class DecoderBR(Decoder):
         super(DecoderBR, self).__init__()
         _ = data_dir
 
-        self.n_classes = n_classes
-        self.hidden_units = hidden_units
-        self.dropout = dropout
+        self.net = tfk.models.Sequential()
+        for i, units in enumerate(hidden_units):
+            self.net.add(tfk.layers.Dropout(rate=dropout))
+            self.net.add(tfk.layers.Dense(units, activation=tf.nn.relu))
+        self.net.add(tfk.layers.Dropout(rate=dropout))
+        self.net.add(tfk.layers.Dense(n_classes, activation=None))
 
-    def __call__(self, mem, mem_len, mem_fixed, labels, mode):
-        is_training = mode == tf.estimator.ModeKeys.TRAIN
+    def decode(self, mem, mem_len, mem_fixed, labels, training):
+        # Compute logits for each class
+        logits = self.net(mem_fixed)
 
-        net = mem_fixed
-        with tf.name_scope("decoder"):
-            # Add all layers of the MLP
-            for i, units in enumerate(self.hidden_units):
-                net = keras.layers.Dropout(rate=self.dropout)(net, training=is_training)
-                net = keras.layers.Dense(units, activation=tf.nn.relu)(net)
+        # Compute predictions as independent confidences
+        probabilities = tf.nn.sigmoid(logits)
 
-            # Compute logits (1 per class)
-            net = keras.layers.Dropout(rate=self.dropout)(net, training=is_training)
-            logits = keras.layers.Dense(self.n_classes, activation=None)(net)
+        # Threshold on 0.5
+        predictions = tf.round(probabilities)
 
-            # Compute predictions as independent confidences
-            probabilities = tf.nn.sigmoid(logits)
-
-            # Threshold on 0.5
-            predictions = tf.round(probabilities)
-
+        # Compute loss
         loss = None
         if labels is not None:
-            # Compute loss.
             with tf.name_scope("loss"):
                 # Binary cross-entropy loss, with multiple labels per instance
                 # (batch, n_classes)
@@ -160,24 +194,21 @@ class DecoderRNN(Decoder):
         self.eos_id = 2
         self.n_special = len(special_labels)
 
-    def __call__(self, mem, mem_len, mem_fixed, labels, mode):
-        is_training = mode == tf.estimator.ModeKeys.TRAIN
-        is_eval = mode == tf.estimator.ModeKeys.EVAL
-
-        with tf.name_scope("decoder") as scope:
+    def decode(self, mem, mem_len, mem_fixed, labels, training):
+        with tf.name_scope("decoder"):
             n_labels = len(self.voc)
-            batch_size = tf.shape(input=labels)[0]
+            batch_size = tf.shape(input=mem)[0]
 
             target, target_len, target_max_len = self.encode_labels(labels)
 
-            output_layer = keras.layers.Dense(n_labels)
-            cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, mode)
+            output_layer = tfk.layers.Dense(n_labels)
+            cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, training)
             emb = tf.Variable(name="label_embeddings",
                               shape=[n_labels, self.emb_size],
                               initial_value=tf.initializers.glorot_uniform)
 
             # Training
-            if is_training:
+            if training:
                 # Shift targets to the right, adding the start token
                 # [batch, steps]
                 start_tokens = tf.fill([batch_size, 1], self.sos_id)
@@ -186,17 +217,15 @@ class DecoderRNN(Decoder):
                 # [batch, steps, emb_size]
                 inputs = tf.nn.embedding_lookup(params=emb, ids=inputs)
 
-                helper = s2s.TrainingHelper(inputs, target_len)
+                # Decoder
+                sampler = s2s.sampler.TrainingSampler()
+                decoder = s2s.BasicDecoder(cell, sampler)
 
-                dec = s2s.BasicDecoder(cell, helper, cell_init)
+                outputs, _, _ = decoder(
+                    inputs,
+                    initial_state=cell_init,
+                    sequence_length=target_len)
 
-                outputs, _, _ = s2s.dynamic_decode(
-                    dec,
-                    maximum_iterations=self.max_steps,
-                    swap_memory=True,
-                    scope=scope)
-
-                # [batch, steps, n_classes]
                 logits = output_layer(outputs.rnn_output)
 
             # Inference
@@ -206,28 +235,24 @@ class DecoderRNN(Decoder):
                 if self.beam_width > 0:
                     dec = s2s.BeamSearchDecoder(
                         cell=cell,
-                        embedding=emb,
-                        start_tokens=start_tokens,
-                        end_token=self.eos_id,
-                        initial_state=cell_init,
                         beam_width=self.beam_width,
-                        output_layer=output_layer)
-                else:
-                    helper = s2s.GreedyEmbeddingHelper(
-                        emb, start_tokens, self.eos_id)
-
-                    dec = s2s.BasicDecoder(
-                        cell,
-                        helper,
-                        cell_init,
                         output_layer=output_layer
                     )
+                else:
+                    dec = s2s.BasicDecoder(
+                        cell,
+                        s2s.GreedyEmbeddingSampler(emb),
+                        cell_init,
+                        output_layer=output_layer,
+                    )
 
-                outputs, _, _ = s2s.dynamic_decode(
-                    dec,
-                    maximum_iterations=self.max_steps,
-                    swap_memory=True,
-                    scope=scope)
+                outputs, _ = dec(
+                    emb,
+                    start_tokens=start_tokens,
+                    end_token=self.eos_id,
+                    initial_state=cell_init,
+                    training=training
+                )
 
                 # [batch, steps, n_classes]
                 if self.beam_width > 0:
@@ -242,7 +267,7 @@ class DecoderRNN(Decoder):
         if labels is not None:
             with tf.name_scope("loss"):
                 # If this is eval, make the loss only look at the target steps
-                if is_eval:
+                if not training:
                     pads = tf.zeros([batch_size, self.max_steps, n_labels])
                     logits = tf.concat([logits, pads], axis=1)
                     logits = logits[:, :target_max_len, :]
@@ -368,7 +393,7 @@ class DecoderRNN(Decoder):
         # (batch_size, n_labels)
         return predictions[:, self.n_special:]
 
-    def build_cell(self, mem, mem_len, mem_fixed, mode):
+    def build_cell(self, mem, mem_len, mem_fixed, training):
         """
         Builds the RNN cell that will drive the decoder.
 
@@ -379,15 +404,14 @@ class DecoderRNN(Decoder):
               [batch]
             mem_fixed (tf.Tensor): fixed-sized representation of the input.
               [batch, size]
-            mode (tf.estimator.ModeKeys): the mode we are on
+            training (bool): if this is training or eval
 
         Returns:
             cell (tf.nn.rnn_cell.RNNCell): the final RNN cell
         """
-        is_training = mode == tf.estimator.ModeKeys.TRAIN
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
-                              mode,
+                              training,
                               self.dropout)
 
         # Build initial state based on `mem_fixed`
@@ -395,7 +419,7 @@ class DecoderRNN(Decoder):
         zero_state = cell.zero_state(batch_size, mem.dtype)
         init = self.bridge(zero_state, mem_fixed)
 
-        if not is_training and self.beam_width > 0:
+        if not training and self.beam_width > 0:
             init = s2s.tile_batch(init, multiplier=self.beam_width)
             mem = s2s.tile_batch(mem, multiplier=self.beam_width)
             mem_len = s2s.tile_batch(mem_len, multiplier=self.beam_width)
@@ -411,7 +435,7 @@ class DecoderRNN(Decoder):
                 initial_cell_state=init,
                 name="attention")
 
-            if is_training and self.dropout > 0.:
+            if training and self.dropout > 0.:
                 cell = tf.nn.RNNCellDropoutWrapper(
                     cell=cell,
                     output_keep_prob=1. - self.dropout

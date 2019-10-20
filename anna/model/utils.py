@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 
 
-def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
+def rnn_cell(rnn_type, num_units, training, dropout=0., residual=False):
     """
     Creates an RNN cell of type `rnn_type`.
 
@@ -11,14 +11,14 @@ def rnn_cell(rnn_type, num_units, mode, dropout=0., residual=False):
     Args:
         rnn_type (str): the type of RNN ("lstm" or "gru")
         num_units (int): num of hidden units for the cell
-        mode (tf.estimator.ModeKeys): the current mode
+        training (bool): if this is training or eval
         dropout (float, optional): percentage to apply for dropout
         residual (bool, optional): whether to use residual connections
 
     Returns:
         cell (tf.nn.rnn_cell.RNNCell): an RNN cell
     """
-    dropout = dropout if mode == tf.estimator.ModeKeys.TRAIN else 0.
+    dropout = dropout if training else 0.
 
     if rnn_type == "lstm":
         cell = keras.layers.LSTMCell(num_units)

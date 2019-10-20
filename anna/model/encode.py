@@ -25,7 +25,7 @@ import anna.data.dataset.glove as glove
 import anna.data.dataset.fasttext as fasttext
 
 
-class Encoder(tf.Module):
+class Encoder(tfk.layers.Layer):
     """
     Encoder that takes the input features, and produces a
     vector representation of them.
@@ -34,7 +34,6 @@ class Encoder(tf.Module):
     def __init__(self,
                  data_dir,
                  name="encoder",
-                 input_names=None,
                  input_limit=None,
                  voc_size=100000,
                  oov_size=1000,
@@ -58,14 +57,12 @@ class Encoder(tf.Module):
         """
         super(Encoder, self).__init__(name=name)
 
-        if not input_names:
-            input_names = ["title", "text"]
-
         self.data_dir = data_dir
-        self.input_names = input_names
         self.input_limit = input_limit
+        self.voc_size = voc_size
         self.oov_size = oov_size
         self.fixed_emb = fixed_embeddings
+        self.pretrained_emb = pretrained_embeddings
 
         # Fetch pre-trained word embeddings
         if pretrained_embeddings == "glove":
@@ -83,13 +80,43 @@ class Encoder(tf.Module):
                                                          self.emb.shape[1]])
             self.emb = np.concatenate([self.emb, extra_emb])
 
-    def __call__(self, features, mode):
+    def get_config(self):
+        """
+        Gets the configuration of the encoder
+
+        Returns:
+            config (dict[str, str]): configuration of the encoder
+        """
+        return {
+            'type': str(type(self)),
+            'input_limit': self.input_limit,
+            'voc_size': self.voc_size,
+            'oov_size': self.oov_size,
+            'fixed_emb': self.fixed_emb,
+            'pretrained_embeddings': self.pretrained_emb
+        }
+
+    def build(self, input_shape):
+        self.emb_tensor = self.add_weight(name="word_embeddings",
+                                          shape=self.emb.shape,
+                                          initializer=tf.initializers.constant(self.emb),
+                                          trainable=not self.fixed_emb)
+
+    def call(self, inputs, training=None):
         """
         Builds the encoder for a specific feature `name` in `features`.
 
         Args:
-            features (dict): dictionary of input features
-            mode (tf.estimator.ModeKeys): the mode we are on
+            inputs (dict[tf.Tensor]): a dict of tensors, expecting:
+                - title (tf.Tensor): input words in the title
+                  [batch, title_len, word_id]
+                - title_mask (tf.Tensor): mask for words in the title
+                  [batch, title_len]
+                - title (tf.Tensor): input words in the title
+                  [batch, title_len, word_id]
+                - title_mask (tf.Tensor): mask for words in the title
+                  [batch, title_len]
+            training (bool): if this is training or eval
 
         Returns:
             mem (tf.Tensor): sequential representation of the input.
@@ -99,27 +126,24 @@ class Encoder(tf.Module):
             mem_fixed (tf.Tensor): fixed-sized representation of the input.
               [batch, size]
         """
-        emb = tf.Variable(name="word_embeddings",
-                          shape=self.emb.shape,
-                          initial_value=self.emb,
-                          trainable=not self.fixed_emb,
-                          dtype=tf.float32)
 
+        title, title_mask, text, text_mask = inputs
         with tf.name_scope("encoder"):
             # Encode all inputs
             mem = []
             mem_len = []
             mem_fixed = []
-            for name in self.input_names:
-                with tf.name_scope("input_" + name):
-                    x, x_len = get_input(features,
-                                         name,
+            for name, feature, feature_mask in [("title", title, title_mask),
+                                                ("text", text, text_mask)]:
+                with tf.name_scope(name):
+                    x, x_len = get_input(feature,
+                                         feature_mask,
                                          self.words,
-                                         emb,
+                                         self.emb_tensor,
                                          self.input_limit,
                                          self.oov_size)
 
-                    m, m_len, m_fixed = self.encode(x, x_len, mode, name)
+                    m, m_len, m_fixed = self.encode(x, x_len, training)
 
                     # (batch, seq_len, size)
                     mem.append(m)
@@ -138,15 +162,14 @@ class Encoder(tf.Module):
 
             return final_mem, final_mem_len, final_mem_fixed
 
-    def encode(self, x, x_len, mode, name):
+    def encode(self, x, x_len, training):
         """
         Encode a given tensor `x` with length `x_len`.
 
         Args:
             x (tf.Tensor): the tensor we want to encode
             x_len (tf.Tensor): the length `x`
-            mode (tf.estimator.ModeKeys): the mode we are on
-            name (str): name of the tensor
+            training (bool): if this is training or eval
 
         Returns:
             mem (tf.Tensor): sequential representation of the input.
@@ -159,27 +182,27 @@ class Encoder(tf.Module):
         raise NotImplementedError
 
 
-def get_input(features, name, words, emb, input_limit=None, oov_size=0):
+def get_input(x, x_mask, words, emb, input_limit=None, oov_size=0):
     """
-    Gets the sequence feature `name` from the `features`,
-    trims the size if necessary, and maps it to its list
+    Trims the size of the feature `x` if necessary, and maps it to a list
     of embeddings.
 
     Args:
-        features (dict): dictionary of input features
-        name (str): name of the feature to encode
+        x (tf.Tensor): the feature tensor
+          [batch, len]
+        x_mask (tf.Tensor): the mask for the given feature
+          [batch]
         words (list[str]): list of strings as vocabulary
         emb (tf.Variable): initialization for the word embeddings
         input_limit (int): maximum size to use from the input sequence
         oov_size (int): nr of buckets to use for out-of-vocabulary words
 
     Returns:
-        x (tf.Tensor): the tensor of embeddings for the feature `name`
+        x (tf.Tensor): the tensor of embeddings for the feature `x`
+          [batch, len, emb_size]
         x_len (tf.Tensor): the length each `x`
+          [batch]
     """
-    x = features[name]
-    x_mask = features[name + "_mask"]
-
     # Limit size
     # (batch, input_limit)
     if input_limit:
@@ -232,7 +255,7 @@ class EncoderAvg(Encoder):
     Encodes the input as an average of its word embeddings.
     """
 
-    def encode(self, x, x_len, mode, name):
+    def encode(self, x, x_len, training):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
         div = tf.cast(x_len[:, tf.newaxis], tf.float32)
@@ -245,7 +268,7 @@ class EncoderMax(Encoder):
     Encodes the input taking the max of each of its word embedding dimensions.
     """
 
-    def encode(self, x, x_len, mode, name):
+    def encode(self, x, x_len, training):
         # Average embeddings, avoiding zero division when the input is empty
         # (batch, emb_size)
         return x, x_len, tf.reduce_max(input_tensor=x, axis=1)
@@ -256,13 +279,13 @@ class EncoderCNN(Encoder):
     Encodes the input using a simple CNN and max-over-time pooling.
     """
 
-    def encode(self, x, x_len, mode, name):
+    def encode(self, x, x_len, training):
         pools = []
         for size in [2, 3, 4]:
             # Run CNN over words
             # (batch, input_len, filters)
             pool = tfk.layers.Conv1D(
-                name="{}_conv_{}".format(name, size),
+                name="conv_{}".format(size),
                 filters=256,
                 kernel_size=size,
                 padding="same",
@@ -300,7 +323,7 @@ class EncoderRNN(Encoder):
         self.dropout = dropout
         self.rnn_type = rnn_type
 
-    def encode(self, x, x_len, mode, name):
+    def encode(self, x, x_len, training):
         raise NotImplementedError
 
 
@@ -309,10 +332,10 @@ class EncoderUniRNN(EncoderRNN):
     Encodes the input using a unidirectional RNN.
     """
 
-    def encode(self, x, x_len, mode, name):
+    def encode(self, x, x_len, training):
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size,
-                              mode,
+                              training,
                               self.dropout)
 
         # Runs encoding RNN
@@ -338,10 +361,10 @@ class EncoderBiRNN(EncoderRNN):
     Encodes the input using a bidirectional RNN.
     """
 
-    def encode(self, x, x_len, mode, name):
+    def encode(self, x, x_len, training):
         cell = utils.rnn_cell(self.rnn_type,
                               self.hidden_size // 2,
-                              mode,
+                              training,
                               self.dropout)
 
         # Runs encoding Bidirectional RNN
