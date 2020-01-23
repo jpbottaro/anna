@@ -9,13 +9,27 @@ Inspired by OpenNMT & google/seq2seq
 @@DenseBridge
 """
 import tensorflow as tf
-import tensorflow.keras as keras
+import tensorflow.keras as tfk
 
 
-class Bridge:
+class Bridge(tfk.layers.Layer):
     """Transforms the state from the encoders so they fit the decoder"""
 
-    def __call__(self, zero_state, init_state):
+    def call(self, inputs, **kwargs):
+        """
+        Call the underlying `bridge`
+
+        Args:
+            inputs ([tf.Tensor]): expects both zero_state and init_state
+            **kwargs: none
+
+        Returns:
+            state (tf.Tensor): the value of the initial state
+        """
+        zero_state, init_state = inputs
+        return self.bridge(zero_state, init_state)
+
+    def bridge(self, zero_state, init_state):
         """
         Creates a state for a cell that accepts `zero_state` type of states. Uses
         `init` as the input.
@@ -33,28 +47,28 @@ class Bridge:
 
 
 class NoBridge(Bridge):
-    def __call__(self, zero_state, init_state):
+    def bridge(self, zero_state, init_state):
         return init_state
 
 
 class ZeroBridge(Bridge):
-    def __call__(self, zero_state, init_state):
+    def bridge(self, zero_state, init_state):
         return zero_state
 
 
 class DenseBridge(Bridge):
-    def __call__(self, zero_state, init_state):
-        # See states as a flat list of tensors
-        zero_state_flat = tf.nest.flatten(zero_state)
-
+    def build(self, input_shape):
         # Find sizes of all states
-        dims = [t.get_shape()[-1].value for t in zero_state_flat]
+        flatten = tf.nest.flatten(input_shape[0])
+        self.dims = [shape[-1] for shape in flatten]
+        self.projection = tfk.layers.Dense(sum(self.dims))
 
+    def bridge(self, zero_state, init_state):
         # Project `init` to cover all needed states
-        states = keras.layers.Dense(sum(dims))(init_state)
+        states = self.projection(init_state)
 
         # Match dimensions of expected states
-        states = tf.split(states, dims, axis=1)
+        states = tf.split(states, self.dims, axis=1)
 
         # Pack the result to conform with the requested states
         return tf.nest.pack_sequence_as(zero_state, states)

@@ -1,8 +1,8 @@
 import tensorflow as tf
-import tensorflow.keras as keras
+import tensorflow.keras as tfk
 
 
-def rnn_cell(rnn_type, num_units, training, dropout=0., residual=False):
+def rnn_cell(rnn_type, num_units, dropout=0.):
     """
     Creates an RNN cell of type `rnn_type`.
 
@@ -11,31 +11,17 @@ def rnn_cell(rnn_type, num_units, training, dropout=0., residual=False):
     Args:
         rnn_type (str): the type of RNN ("lstm" or "gru")
         num_units (int): num of hidden units for the cell
-        training (bool): if this is training or eval
         dropout (float, optional): percentage to apply for dropout
-        residual (bool, optional): whether to use residual connections
 
     Returns:
         cell (tf.nn.rnn_cell.RNNCell): an RNN cell
     """
-    dropout = dropout if training else 0.
-
     if rnn_type == "lstm":
-        cell = keras.layers.LSTMCell(num_units)
+        cell = tfk.layers.LSTMCell(num_units, dropout=dropout)
     elif rnn_type == "gru":
-        cell = keras.layers.GRUCell(num_units)
+        cell = tfk.layers.GRUCell(num_units, dropout=dropout)
     else:
         raise ValueError("Unknown rnn_type '{}'".format(rnn_type))
-
-    if dropout > 0.:
-        keep_prob = (1. - dropout)
-        cell = tf.nn.RNNCellDropoutWrapper(
-            cell=cell,
-            input_keep_prob=keep_prob,
-        )
-
-    if residual:
-        cell = tf.nn.RNNCellResidualWrapper(cell)
 
     return cell
 

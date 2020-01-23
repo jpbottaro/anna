@@ -1,4 +1,4 @@
-tensorflow==2.0.0
+tensorflow==2.1.0
 tensorflow-addons
 beautifulsoup4==4.6.0
 html5lib

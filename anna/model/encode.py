@@ -318,10 +318,9 @@ class EncoderRNN(Encoder):
                  *args,
                  **kwargs):
         super().__init__(data_dir, *args, **kwargs)
-
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.rnn_type = rnn_type
+        self.cell = utils.rnn_cell(rnn_type,
+                                   hidden_size,
+                                   dropout)
 
     def encode(self, x, x_len, training):
         raise NotImplementedError
@@ -333,15 +332,10 @@ class EncoderUniRNN(EncoderRNN):
     """
 
     def encode(self, x, x_len, training):
-        cell = utils.rnn_cell(self.rnn_type,
-                              self.hidden_size,
-                              training,
-                              self.dropout)
-
         # Runs encoding RNN
         # result: [(batch_size, size, hidden_size), state1, state2, ...]
         # state: (batch_size, hidden_size)
-        result = tfk.layers.RNN(cell,
+        result = tfk.layers.RNN(self.cell,
                                 return_sequences=True,
                                 return_state=True)(x, tf.sequence_mask(x_len))
 
@@ -362,15 +356,10 @@ class EncoderBiRNN(EncoderRNN):
     """
 
     def encode(self, x, x_len, training):
-        cell = utils.rnn_cell(self.rnn_type,
-                              self.hidden_size // 2,
-                              training,
-                              self.dropout)
-
         # Runs encoding Bidirectional RNN
         # result: [(batch_size, size, hidden_size), state1, state2, ...]
         # state: (batch_size, hidden_size)
-        rnn = tfk.layers.RNN(cell,
+        rnn = tfk.layers.RNN(self.cell,
                              return_sequences=True,
                              return_state=True)
         result = tfk.layers.Bidirectional(rnn, merge_mode="concat")(x, tf.sequence_mask(x_len))

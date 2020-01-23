@@ -153,7 +153,7 @@ class DecoderRNN(Decoder):
                  max_steps=30,
                  emb_size=256,
                  rnn_type="gru",
-                 bridge=DenseBridge(),
+                 bridge=DenseBridge,
                  dropout=.3,
                  beam_width=0,
                  attention=None,
@@ -168,7 +168,7 @@ class DecoderRNN(Decoder):
             max_steps (int): max number of steps the decoder can take.
             emb_size (int): size of label embeddings.
             rnn_type (str): type of rnn (options: "gru" or "lstm").
-            bridge (Bridge): how to hook the input to the RNN state.
+            bridge (class of Bridge): how to hook the input to the RNN state.
             dropout (float): rate of dropout to apply (0 to disable).
             beam_width (int): size of the beam search beam (0 to disable).
             attention (tfa.seq2seq.AttentionMechanism): the attention
@@ -178,12 +178,7 @@ class DecoderRNN(Decoder):
         super(DecoderRNN, self).__init__()
         _ = data_dir
 
-        self.hidden_size = hidden_size
         self.max_steps = max_steps
-        self.emb_size = emb_size
-        self.rnn_type = rnn_type
-        self.dropout = dropout
-        self.bridge = bridge
         self.beam_width = beam_width
         self.attention = attention
         self.loss = loss
@@ -194,82 +189,37 @@ class DecoderRNN(Decoder):
         self.eos_id = 2
         self.n_special = len(special_labels)
 
+        n_labels = len(self.voc)
+        self.cell = utils.rnn_cell(rnn_type,
+                                   hidden_size,
+                                   dropout)
+        self.emb = tfk.layers.Embedding(n_labels, emb_size, name="label_embeddings")
+        self.output_layer = tfk.layers.Dense(n_labels)
+        self.bridge = bridge()
+
     def decode(self, mem, mem_len, mem_fixed, labels, training):
         with tf.name_scope("decoder"):
             n_labels = len(self.voc)
             batch_size = tf.shape(input=mem)[0]
 
             target, target_len, target_max_len = self.encode_labels(labels)
-
-            output_layer = tfk.layers.Dense(n_labels)
             cell, cell_init = self.build_cell(mem, mem_len, mem_fixed, training)
-            emb = tf.Variable(name="label_embeddings",
-                              shape=[n_labels, self.emb_size],
-                              initial_value=tf.initializers.glorot_uniform)
 
-            # Training
-            if training:
-                # Shift targets to the right, adding the start token
-                # [batch, steps]
-                start_tokens = tf.fill([batch_size, 1], self.sos_id)
-                inputs = tf.concat([start_tokens, target[:, :-1]], axis=1)
+            # Build both graphs, train and predict
+            train_logits = self.build_train(batch_size, cell, cell_init, target, target_len)
+            predict_logits = self.build_predict(batch_size, cell, cell_init, n_labels)
 
-                # [batch, steps, emb_size]
-                inputs = tf.nn.embedding_lookup(params=emb, ids=inputs)
-
-                # Decoder
-                sampler = s2s.sampler.TrainingSampler()
-                decoder = s2s.BasicDecoder(cell, sampler)
-
-                outputs, _, _ = decoder(
-                    inputs,
-                    initial_state=cell_init,
-                    sequence_length=target_len)
-
-                logits = output_layer(outputs.rnn_output)
-
-            # Inference
-            else:
-                start_tokens = tf.fill([batch_size], self.sos_id)
-
-                if self.beam_width > 0:
-                    dec = s2s.BeamSearchDecoder(
-                        cell=cell,
-                        beam_width=self.beam_width,
-                        output_layer=output_layer
-                    )
-                else:
-                    dec = s2s.BasicDecoder(
-                        cell,
-                        s2s.GreedyEmbeddingSampler(emb),
-                        cell_init,
-                        output_layer=output_layer,
-                    )
-
-                outputs, _ = dec(
-                    emb,
-                    start_tokens=start_tokens,
-                    end_token=self.eos_id,
-                    initial_state=cell_init,
-                    training=training
-                )
-
-                # [batch, steps, n_classes]
-                if self.beam_width > 0:
-                    logits = tf.one_hot(outputs.predicted_ids[:, :, 0],
-                                        n_labels)
-                else:
-                    logits = outputs.rnn_output
-
-        predictions = self.decode_labels(logits)
+            predictions = self.decode_labels(predict_logits)
 
         loss = None
         if labels is not None:
             with tf.name_scope("loss"):
+                # TODO: Check s2s's loss
+
                 # If this is eval, make the loss only look at the target steps
                 if not training:
                     pads = tf.zeros([batch_size, self.max_steps, n_labels])
-                    logits = tf.concat([logits, pads], axis=1)
+                    logits = tf.concat([train_logits, pads], axis=1)
                     logits = logits[:, :target_max_len, :]
 
                 # [batch, steps, n_classes]
@@ -287,6 +237,56 @@ class DecoderRNN(Decoder):
                 loss /= tf.cast(batch_size, tf.float32)
 
         return predictions, loss
+
+    def build_train(self, batch_size, cell, cell_init, target, target_len):
+        # Shift targets to the right, adding the start token
+        # [batch, steps]
+        start_tokens = tf.fill([batch_size, 1], self.sos_id)
+        inputs = tf.concat([start_tokens, target[:, :-1]], axis=1)
+
+        # [batch, steps, emb_size]
+        inputs = self.emb(inputs)
+
+        # Decoder
+        sampler = s2s.sampler.TrainingSampler()
+        dec = s2s.BasicDecoder(cell, sampler)
+
+        outs, _, _ = dec(
+            inputs,
+            initial_state=cell_init,
+            sequence_length=target_len)
+
+        return self.output_layer(outs.rnn_output)
+
+    def build_predict(self, batch_size, cell, cell_init, n_labels):
+        start_tokens = tf.fill([batch_size], self.sos_id)
+
+        if self.beam_width > 0:
+            dec = s2s.BeamSearchDecoder(
+                cell=cell,
+                beam_width=self.beam_width,
+                output_layer=self.output_layer,
+                embedding_fn=self.emb
+            )
+        else:
+            dec = s2s.BasicDecoder(
+                cell,
+                s2s.GreedyEmbeddingSampler(self.emb),
+                output_layer=self.output_layer
+            )
+
+        outs, _, _ = dec(
+            None,
+            start_tokens=start_tokens,
+            end_token=self.eos_id,
+            initial_state=cell_init
+        )
+
+        # [batch, steps, n_classes]
+        if self.beam_width > 0:
+            return tf.one_hot(outs.predicted_ids[:, :, 0], n_labels)
+        else:
+            return outs.rnn_output
 
     def encode_labels(self, labels):
         """
@@ -409,15 +409,10 @@ class DecoderRNN(Decoder):
         Returns:
             cell (tf.nn.rnn_cell.RNNCell): the final RNN cell
         """
-        cell = utils.rnn_cell(self.rnn_type,
-                              self.hidden_size,
-                              training,
-                              self.dropout)
-
         # Build initial state based on `mem_fixed`
         batch_size = tf.shape(input=mem_fixed)[0]
-        zero_state = cell.zero_state(batch_size, mem.dtype)
-        init = self.bridge(zero_state, mem_fixed)
+        zero_state = self.cell.get_initial_state(batch_size=batch_size, dtype=mem.dtype)
+        init = self.bridge([zero_state, mem_fixed])
 
         if not training and self.beam_width > 0:
             init = s2s.tile_batch(init, multiplier=self.beam_width)
@@ -425,6 +420,7 @@ class DecoderRNN(Decoder):
             mem_len = s2s.tile_batch(mem_len, multiplier=self.beam_width)
             batch_size *= self.beam_width
 
+        cell = self.cell
         if self.attention:
             att_mechanism = self.attention(self.hidden_size, mem, mem_len)
 
@@ -435,12 +431,6 @@ class DecoderRNN(Decoder):
                 initial_cell_state=init,
                 name="attention")
 
-            if training and self.dropout > 0.:
-                cell = tf.nn.RNNCellDropoutWrapper(
-                    cell=cell,
-                    output_keep_prob=1. - self.dropout
-                )
-
-            init = cell.zero_state(batch_size, mem.dtype)
+            init = cell.get_initial_state(batch_size=batch_size, dtype=mem.dtype)
 
         return cell, init

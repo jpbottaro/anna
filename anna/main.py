@@ -13,6 +13,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: main.py DATA_FOLDER [reuters|rcv1|bioasq]")
         exit(1)
+    tf.compat.v1.disable_eager_execution()
 
     dataset = "reuters"
     if len(sys.argv) == 3:
