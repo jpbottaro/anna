@@ -40,7 +40,7 @@ setup(
     license='MIT',
     author='Juan Pablo Bottaro',
     tests_require=['pytest'],
-    install_requires=['Tensorflow==1.15.0'],
+    install_requires=['Tensorflow==1.15.4'],
     cmdclass={'test': PyTest},
     author_email='jpbottaro@gmail.com',
     description='NN experiments on traditional datasets.',
