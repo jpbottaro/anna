@@ -1,4 +1,4 @@
-tensorflow==2.3.1
+tensorflow==2.7.2
 beautifulsoup4==4.6.0
 html5lib
 matplotlib
