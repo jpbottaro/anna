@@ -48,7 +48,26 @@ def fetch(data_dir, dest="conll03"):
     ner_dir = os.path.join(conll_dir, NER_DIR)
     if not os.path.exists(ner_dir):
         with tarfile.open(conll_file, "r:gz") as conll:
-            conll.extractall(conll_dir)
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(conll, conll_dir)
 
     # Put Reuters data where CoNLL03 script expects it
     reuters_file = os.path.join(ner_dir, REUTERS_FILE)
